@@ -1,0 +1,25 @@
+/* src/assets/main.css */
+#app {
+  width: 100%;
+  margin: 0 auto;
+  font-weight: normal;
+}
+
+/* Ép toàn bộ link không có gạch chân */
+a {
+  text-decoration: none;
+  color: inherit;
+  transition: 0.4s;
+}
+
+/* Đảm bảo hình ảnh không bị tràn khung */
+img {
+  max-width: 100%;
+  display: block;
+}
+
+/* Tùy chỉnh thanh cuộn cho mượt (Scrollbar) */
+::-webkit-scrollbar {
+  width: 0px;
+  background: transparent; /* Ẩn thanh cuộn để giống App Mobile thật */
+}

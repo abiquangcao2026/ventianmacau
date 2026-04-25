@@ -1,0 +1,52 @@
+/* file: src/assets/base-casino.css */
+html,
+body,
+#app {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  background: #f5f5f5;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f5f5f5;
+  color: #ffffff;
+  font-family: 'Lexend Deca', Arial, Helvetica, sans-serif;
+}
+
+a {
+  color: inherit;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+#app {
+  width: 100%;
+  min-height: 100vh;
+  margin: 0 auto;
+  background: transparent;
+  overflow-x: hidden;
+}
+
+.page-shell,
+.page-wrap,
+.app-shell {
+  width: 100%;
+  margin: 0 auto;
+}
