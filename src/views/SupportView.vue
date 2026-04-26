@@ -31,23 +31,36 @@
         class="chat-bubble"
         :class="msg.senderId === userId ? 'chat-bubble--user' : 'chat-bubble--bot'"
       >
-        <span v-if="msg.senderId !== userId" class="chat-bubble__name">{{ msg.senderName }}</span>
+        <span v-if="msg.senderId !== userId" class="chat-bubble__name">{{ msg.senderRole === 'admin' ? 'Chăm sóc khách hàng' : msg.senderName }}</span>
         <div class="chat-bubble__content">
-          <p>{{ msg.content }}</p>
+          <template v-if="msg.messageType === 'image' && msg.imageUrl">
+            <img class="chat-bubble__image" :src="resolveImageSrc(msg.imageUrl)" alt="Ảnh" />
+          </template>
+          <p v-else>{{ msg.content }}</p>
         </div>
         <span class="chat-bubble__time">{{ fmtTime(msg.createdAt) }}</span>
       </div>
     </div>
 
-    <!-- Chat input -->
-    <div class="chat-input">
-      <input
-        v-model.trim="chatInput"
-        type="text"
-        class="chat-input__field"
-        placeholder="Nhập tin nhắn..."
-        @keyup.enter="sendMessage"
-      />
+  <!-- Chat input -->
+  <div class="chat-input">
+    <input
+      ref="fileRef"
+      class="chat-input__file"
+      type="file"
+      accept="image/png,image/jpeg,image/webp,image/gif"
+      @change="onPickImage"
+    />
+    <button class="chat-input__attach" type="button" :disabled="sendingImage || !userStore.isLoggedIn" @click="pickImage">
+      Ảnh
+    </button>
+    <input
+      v-model.trim="chatInput"
+      type="text"
+      class="chat-input__field"
+      placeholder="Nhập tin nhắn..."
+      @keyup.enter="sendMessage"
+    />
       <button class="chat-input__send" type="button" :disabled="sending" @click="sendMessage">
         Gửi
       </button>
@@ -57,22 +70,23 @@
 
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, API_BASE_URL } from '@/lib/api'
 import { useUserStore } from '@/stores/user'
 import { useSocketStore } from '@/stores/socket'
-
-const ROOM_ID = 'support'
 
 const userStore = useUserStore()
 const socketStore = useSocketStore()
 
 const messagesRef = ref(null)
+const fileRef = ref(null)
 const chatInput = ref('')
 const messages = ref([])
 const loading = ref(false)
 const sending = ref(false)
+const sendingImage = ref(false)
 
 const userId = computed(() => userStore.user?._id || null)
+const roomId = computed(() => (userId.value ? `support:${userId.value}` : ''))
 
 function fmtTime(v) {
   if (!v) return ''
@@ -90,7 +104,7 @@ async function loadMessages() {
   if (!userStore.isLoggedIn) return
   loading.value = true
   try {
-    const data = await apiFetch(`/api/account/chat/${ROOM_ID}`, { headers: userStore.authHeaders })
+    const data = await apiFetch(`/api/account/chat/${encodeURIComponent(roomId.value)}`, { headers: userStore.authHeaders })
     messages.value = data.items || []
   } catch {
     // API might not exist for user — ignore
@@ -110,9 +124,10 @@ function sendMessage() {
   const socket = socketStore.connect()
 
   socket.emit('send_chat_message', {
-    roomId: ROOM_ID,
+    roomId: roomId.value,
     content: text,
-    token: userStore.token
+    token: userStore.token,
+    messageType: 'text'
   }, () => {
     sending.value = false
   })
@@ -121,11 +136,63 @@ function sendMessage() {
 }
 
 function onChatMessage(msg) {
-  if (msg.roomId !== ROOM_ID) return
+  if (msg.roomId !== roomId.value) return
   // Avoid duplicates
   if (messages.value.some(m => m._id === msg._id)) return
   messages.value.push(msg)
   nextTick(scrollToBottom)
+}
+
+function resolveImageSrc(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  return `${String(API_BASE_URL || '').replace(/\\/+$/, '')}${raw.startsWith('/') ? raw : `/${raw}`}`
+}
+
+function pickImage() {
+  if (!fileRef.value) return
+  fileRef.value.value = ''
+  fileRef.value.click()
+}
+
+async function onPickImage(e) {
+  const file = e?.target?.files?.[0]
+  if (!file || sendingImage.value || !userStore.isLoggedIn) return
+
+  sendingImage.value = true
+  try {
+    const form = new FormData()
+    form.append('image', file)
+
+    const res = await fetch(`${String(API_BASE_URL || '').replace(/\\/+$/, '')}/api/account/chat/upload-image`, {
+      method: 'POST',
+      headers: {
+        ...userStore.authHeaders
+      },
+      body: form
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      throw new Error(json?.message || `HTTP ${res.status}`)
+    }
+    const data = await res.json().catch(() => ({}))
+    const imageUrl = String(data?.imageUrl || '').trim()
+    if (!imageUrl) throw new Error('Upload ảnh thất bại')
+
+    const socket = socketStore.connect()
+    socket.emit('send_chat_message', {
+      roomId: roomId.value,
+      content: '',
+      imageUrl,
+      token: userStore.token,
+      messageType: 'image'
+    }, () => {
+      sendingImage.value = false
+    })
+  } catch {
+    sendingImage.value = false
+  }
 }
 
 onMounted(async () => {
@@ -133,7 +200,7 @@ onMounted(async () => {
 
   if (userStore.isLoggedIn) {
     const socket = socketStore.connect()
-    socket.emit('join_chat', { roomId: ROOM_ID })
+    socket.emit('join_chat', { roomId: roomId.value, token: userStore.token })
     socket.on('chat_message', onChatMessage)
   }
 })
@@ -141,7 +208,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   const socket = socketStore.socket
   if (socket) {
-    socket.emit('leave_chat', { roomId: ROOM_ID })
+    socket.emit('leave_chat', { roomId: roomId.value })
     socket.off('chat_message', onChatMessage)
   }
 })
@@ -296,5 +363,34 @@ onBeforeUnmount(() => {
 .chat-input__send:disabled {
   opacity: 0.4;
   background: #ced4da;
+}
+
+.chat-input__file {
+  display: none;
+}
+
+.chat-input__attach {
+  flex: 0 0 auto;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #f1f3f5;
+  border-radius: 20px;
+  font-weight: 800;
+  color: #1a1a2e;
+  cursor: pointer;
+}
+
+.chat-input__attach:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.chat-bubble__image {
+  display: block;
+  max-width: 240px;
+  max-height: 240px;
+  border-radius: 14px;
+  object-fit: cover;
 }
 </style>

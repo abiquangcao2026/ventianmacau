@@ -161,9 +161,9 @@ const sections = [
       { name: 'Xúc sắc 5P', provider: 'OG', image: '/img/xucxac3p.82275b4.png', badge: '5P', action: 'sicbo5p' },
       { name: 'Cua Tôm Cá Thái', provider: 'SEXY', image: '/img/SEX009-X7BPc8lv.6a51b00.png' },
       { name: 'Fortune Gems', provider: 'JL', image: '/img/JL0033-vLKTDaCo.7e4bff4.png' },
-      { name: 'Keno 1P', provider: 'OG', image: '/img/k1-aC7jKYof.1febb7a.png', badge: '1P' },
-      { name: 'Keno 3P', provider: 'OG', image: '/img/k3-We1wcg_g.7cdc583.png', badge: '3P' },
-      { name: 'Keno 5P', provider: 'OG', image: '/img/k5-f-qJahMP.bca7cf7.png', badge: '5P' },
+      { name: 'Keno 1P', provider: 'OG', image: '/img/k1-aC7jKYof.1febb7a.png', badge: '1P', action: 'keno1p' },
+      { name: 'Keno 3P', provider: 'OG', image: '/img/k3-We1wcg_g.7cdc583.png', badge: '3P', action: 'keno3p' },
+      { name: 'Keno 5P', provider: 'OG', image: '/img/k5-f-qJahMP.bca7cf7.png', badge: '5P', action: 'keno5p' },
       { name: 'Đá quý Aztec', provider: 'PP', image: '/img/PP0009-qBBM4cGb.ae8f78d.png' }
     ]
   },

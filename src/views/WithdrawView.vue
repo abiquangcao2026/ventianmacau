@@ -156,7 +156,7 @@ onMounted(loadLinkedBank)
 <style scoped>
 .withdraw-page {
   min-height: calc(100vh - 152px);
-  padding: 16px 16px 30px;
+  padding: 16px 16px 120px;
   color: #fff;
 }
 

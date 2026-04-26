@@ -19,6 +19,12 @@ const router = createRouter({
       meta: { requiresAuth: true, layout: 'member' }
     },
     {
+      path: '/keno',
+      name: 'keno',
+      component: () => import('@/views/KenoGame.vue'),
+      meta: { requiresAuth: true, layout: 'member' }
+    },
+    {
       path: '/account',
       name: 'account',
       component: () => import('@/views/AccountView.vue'),

@@ -377,6 +377,20 @@
           </div>
         </div>
 
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Tỉ lệ nhanh (Lớn/Nhỏ/Chẵn/Lẻ)</h3></div>
+          <div class="odds-quick">
+            <label class="form-field"><span>Lớn</span><input v-model="oddsConfig.odds.tai" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Nhỏ</span><input v-model="oddsConfig.odds.xiu" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Lẻ</span><input v-model="oddsConfig.odds.odd" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Chẵn</span><input v-model="oddsConfig.odds.even" type="number" step="0.01" /></label>
+          </div>
+          <div class="action-btns action-btns--left" style="margin-top:10px">
+            <button class="btn btn--primary btn--sm" :disabled="savingOdds" @click="saveOddsSettings">{{ savingOdds ? 'Đang lưu...' : 'Lưu tỉ lệ' }}</button>
+            <button class="btn btn--sm" :disabled="savingOdds" @click="resetOddsSettings">Reset</button>
+          </div>
+        </div>
+
         <!-- Bảng cược -->
         <div class="panel-card">
           <div class="panel-card__header"><h3>Lệnh cược gần đây</h3></div>
@@ -465,24 +479,56 @@
       <!-- Chat -->
       <div v-if="activeTab === 'chat'" class="admin-panel">
         <div class="panel-card">
-          <div class="panel-card__header"><h3>Chat / CSKH (Realtime)</h3></div>
+          <div class="panel-card__header">
+            <h3>Chat / CSKH (Realtime)</h3>
+            <div class="chat-kpi">
+              <span class="badge badge--info">Tin nhắn hôm nay: {{ chatStats.todayMessages }}</span>
+              <span class="badge" :class="chatStats.pendingRooms ? 'badge--warning' : 'badge--success'">Chưa trả lời: {{ chatStats.pendingRooms }}</span>
+            </div>
+          </div>
           <div class="admin-chat-layout">
             <div class="admin-chat-rooms">
-              <button v-for="room in chatRooms" :key="room.roomId" class="admin-chat-room" :class="{ 'admin-chat-room--active': selectedRoomId === room.roomId }" @click="selectedRoomId = room.roomId">
-                <strong>{{ room.title }}</strong>
+              <button
+                v-for="room in chatRooms"
+                :key="room.roomId"
+                class="admin-chat-room"
+                :class="{ 'admin-chat-room--active': selectedRoomId === room.roomId }"
+                @click="selectChatRoom(room.roomId)"
+              >
+                <div class="admin-chat-room__top">
+                  <strong>{{ room.title }}</strong>
+                  <span v-if="unreadByRoom[room.roomId]" class="badge badge--warning">{{ unreadByRoom[room.roomId] }}</span>
+                  <span v-else-if="room.needsReply" class="badge badge--warning">Chờ trả lời</span>
+                </div>
                 <span>{{ room.lastMessage }}</span>
               </button>
             </div>
             <div class="admin-chat-messages" ref="adminChatRef">
+              <div v-if="selectedChatUser" class="admin-chat-usercard">
+                <div><span>Gợi nhớ</span><strong>{{ selectedChatUser.displayName || '--' }}</strong></div>
+                <div><span>Nhân vật</span><strong>{{ selectedChatUser.characterName || '--' }}</strong></div>
+                <div><span>Username</span><strong>@{{ selectedChatUser.username }}</strong></div>
+                <div><span>ID</span><strong>{{ selectedChatUser.userCode || '--' }}</strong></div>
+                <div><span>IP</span><strong>{{ selectedChatUser.lastLoginIp || '--' }}</strong></div>
+                <div><span>Số dư</span><strong>{{ formatMoney(selectedChatUser.balance) }}</strong></div>
+              </div>
               <div v-if="chatMessages.length === 0" class="panel-card__empty">Chọn phòng để xem tin nhắn.</div>
               <div v-for="msg in chatMessages" :key="msg._id" class="admin-chat-msg" :class="{ 'admin-chat-msg--admin': msg.senderRole === 'admin' }">
-                <strong>{{ msg.senderName || msg.sender }} <span v-if="msg.senderRole === 'admin'" class="badge badge--info">Admin</span></strong>
-                <p>{{ msg.content }}</p>
+                <strong>
+                  {{ msg.senderRole === 'admin' ? 'Chăm sóc khách hàng' : (msg.senderName || msg.sender) }}
+                  <span v-if="msg.senderRole === 'admin'" class="badge badge--info">CSKH</span>
+                </strong>
+                <template v-if="msg.messageType === 'image' && msg.imageUrl">
+                  <img class="admin-chat-image" :src="resolveImageSrc(msg.imageUrl)" alt="Ảnh" />
+                </template>
+                <p v-else>{{ msg.content }}</p>
                 <small>{{ formatDate(msg.createdAt) }}</small>
               </div>
             </div>
           </div>
           <div class="admin-chat-input">
+            <input ref="adminChatFileRef" class="admin-chat-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif" @change="onAdminPickImage" />
+            <button class="btn btn--sm" :disabled="sendingAdminChat || sendingAdminImage" @click="pickAdminImage">Ảnh</button>
             <input v-model.trim="adminChatInput" type="text" placeholder="Trả lời..." @keyup.enter="sendAdminChat" />
             <button class="btn btn--primary" :disabled="sendingAdminChat" @click="sendAdminChat">Gửi</button>
           </div>
@@ -555,6 +601,20 @@
             <select v-model="forced5p.d3" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`b3-${v}`" :value="String(v)">{{ v }}</option></select>
             <button class="btn btn--primary" @click="saveSicbo5pControl">Xác nhận</button>
             <button class="btn" @click="forced5p.d1='';forced5p.d2='';forced5p.d3=''">Làm mới</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Tỉ lệ nhanh (Lớn/Nhỏ/Chẵn/Lẻ)</h3></div>
+          <div class="odds-quick">
+            <label class="form-field"><span>Lớn</span><input v-model="oddsConfig.odds.tai" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Nhỏ</span><input v-model="oddsConfig.odds.xiu" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Lẻ</span><input v-model="oddsConfig.odds.odd" type="number" step="0.01" /></label>
+            <label class="form-field"><span>Chẵn</span><input v-model="oddsConfig.odds.even" type="number" step="0.01" /></label>
+          </div>
+          <div class="action-btns action-btns--left" style="margin-top:10px">
+            <button class="btn btn--primary btn--sm" :disabled="savingOdds" @click="saveOddsSettings">{{ savingOdds ? 'Đang lưu...' : 'Lưu tỉ lệ' }}</button>
+            <button class="btn btn--sm" :disabled="savingOdds" @click="resetOddsSettings">Reset</button>
           </div>
         </div>
 
@@ -720,7 +780,7 @@
 <script setup>
 import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { apiFetch } from '@/lib/api'
+import { apiFetch, API_BASE_URL } from '@/lib/api'
 import { useUserStore } from '@/stores/user'
 import { useSocketStore } from '@/stores/socket'
 
@@ -810,7 +870,7 @@ const sicboControl = reactive({
 
 const oddsConfig = reactive({
   roomId: 'sicbo-3p', title: '', roundDuration: 240, betLockSeconds: 8,
-  minBet: 1000, maxBet: 50000, chipOptions: [], odds: {}
+  minBet: 1000, maxBet: 50000, chipOptions: [], odds: { tai: 1.98, xiu: 1.98, odd: 1.98, even: 1.98 }
 })
 
 const users = ref([])
@@ -826,6 +886,11 @@ const chatMessages = ref([])
 const adminChatRef = ref(null)
 const adminChatInput = ref('')
 const sendingAdminChat = ref(false)
+const adminChatFileRef = ref(null)
+const sendingAdminImage = ref(false)
+const selectedChatUser = ref(null)
+const unreadByRoom = reactive({})
+const chatStats = reactive({ todayMessages: 0, pendingRooms: 0 })
 const kenoForceInput = ref('')
 const kenoRoundLabel = computed(() => Math.floor(Date.now() / 60000))
 const currentBets5p = ref([])
@@ -854,11 +919,13 @@ function applySicboRealtimeState(state) {
 
 function ensureSicboRealtimeForTab(tabKey) {
   if (tabKey === 'odds-settings') {
+    selectedOddsRoomId.value = 'sicbo-3p'
     socketStore.joinSicboRoom(userStore.user?._id, 'sicbo-3p')
     return
   }
 
   if (tabKey === 'odds-5p') {
+    selectedOddsRoomId.value = 'sicbo-5p'
     socketStore.joinSicboRoom(userStore.user?._id, 'sicbo-5p')
   }
 }
@@ -964,6 +1031,16 @@ function handleLogout() { userStore.logout(); router.push('/admin/login') }
 function formatMoney(v) { return new Intl.NumberFormat('vi-VN').format(Number(v || 0)) + ' đ' }
 function formatDate(v) { return v ? new Date(v).toLocaleString('vi-VN') : '--' }
 function formatCountdown(v) { const s = Math.max(Number(v||0),0); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}` }
+function resolveImageSrc(url) {
+  const raw = String(url || '').trim()
+  if (!raw) return ''
+  if (raw.startsWith('http://') || raw.startsWith('https://')) return raw
+  return `${String(API_BASE_URL || '').replace(/\\/+$/, '')}${raw.startsWith('/') ? raw : `/${raw}`}`
+}
+function selectChatRoom(roomId) {
+  selectedRoomId.value = roomId
+  if (roomId) unreadByRoom[roomId] = 0
+}
 function formatTransactionType(type) {
   const m = { deposit_pending:'Yêu cầu nạp', deposit:'Nạp thành công', deposit_rejected:'Từ chối nạp', withdraw_pending:'Yêu cầu rút', withdraw:'Rút thành công', withdraw_rejected:'Từ chối rút', bet:'Đặt cược', win:'Trả thưởng', refund:'Hoàn cược', admin_credit:'Admin cộng', admin_debit:'Admin trừ', admin_bonus:'Admin thưởng' }
   return m[type] || type || 'Giao dịch'
@@ -1082,7 +1159,18 @@ async function resetAdminPassword(admin) {
   adminActionSavingState[admin._id]=true
   try{loadError.value='';await apiFetch(`/api/admin/admins/${admin._id}/password`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({password:pw})}); adminPasswordDrafts[admin._id]=''; showToast('Đã cập nhật mật khẩu')}catch(e){loadError.value=e.message||'Error'}finally{adminActionSavingState[admin._id]=false}
 }
-async function loadChatRooms() { const d=await apiFetch('/api/admin/chat/rooms',{headers:userStore.authHeaders}); chatRooms.value=d.items||[]; if(!selectedRoomId.value&&chatRooms.value.length)selectedRoomId.value=chatRooms.value[0].roomId }
+async function loadChatStats() {
+  const d = await apiFetch('/api/admin/chat/stats', { headers: userStore.authHeaders })
+  Object.assign(chatStats, d.stats || {})
+}
+
+async function loadChatRooms() {
+  const d = await apiFetch('/api/admin/chat/rooms', { headers: userStore.authHeaders })
+  chatRooms.value = d.items || []
+  if (!selectedRoomId.value && chatRooms.value.length) {
+    selectedRoomId.value = chatRooms.value[0].roomId
+  }
+}
 
 async function loadSiteConfig() {
   try { const d=await apiFetch('/api/admin/site-config',{headers:userStore.authHeaders}); Object.assign(siteConfig,d.config||{}) } catch { /* ignore */ }
@@ -1133,33 +1221,113 @@ function sendAdminChat() {
   const text=adminChatInput.value.trim(); if(!text||sendingAdminChat.value)return
   sendingAdminChat.value=true
   const socket=socketStore.connect()
-  socket.emit('send_chat_message',{roomId:selectedRoomId.value,content:text,token:userStore.token},()=>{sendingAdminChat.value=false})
+  socket.emit('send_chat_message',{roomId:selectedRoomId.value,content:text,token:userStore.token,messageType:'text'},()=>{sendingAdminChat.value=false})
   adminChatInput.value=''
 }
 
 function onAdminChatMessage(msg) {
-  if(msg.roomId!==selectedRoomId.value)return
-  if(chatMessages.value.some(m=>m._id===msg._id))return
-  chatMessages.value.push(msg)
-  nextTick(()=>{if(adminChatRef.value)adminChatRef.value.scrollTop=adminChatRef.value.scrollHeight})
+  if (!msg?.roomId) return
+
+  if (msg.roomId === selectedRoomId.value) {
+    if(chatMessages.value.some(m=>m._id===msg._id))return
+    chatMessages.value.push(msg)
+    nextTick(()=>{if(adminChatRef.value)adminChatRef.value.scrollTop=adminChatRef.value.scrollHeight})
+    return
+  }
+
+  unreadByRoom[msg.roomId] = Number(unreadByRoom[msg.roomId] || 0) + 1
+}
+
+function onAdminChatNotify(payload) {
+  const roomId = payload?.roomId
+  if (!roomId) return
+  if (roomId !== selectedRoomId.value) {
+    unreadByRoom[roomId] = Number(unreadByRoom[roomId] || 0) + 1
+    showToast('Có tin nhắn mới từ khách')
+  }
+  void loadChatStats()
+  void loadChatRooms()
+}
+
+function pickAdminImage() {
+  if (!adminChatFileRef.value) return
+  adminChatFileRef.value.value = ''
+  adminChatFileRef.value.click()
+}
+
+async function onAdminPickImage(e) {
+  const file = e?.target?.files?.[0]
+  if (!file || sendingAdminImage.value || !selectedRoomId.value) return
+
+  sendingAdminImage.value = true
+  try {
+    const form = new FormData()
+    form.append('image', file)
+
+    const res = await fetch(`${String(API_BASE_URL || '').replace(/\\/+$/, '')}/api/account/chat/upload-image`, {
+      method: 'POST',
+      headers: {
+        ...userStore.authHeaders
+      },
+      body: form
+    })
+    if (!res.ok) {
+      const json = await res.json().catch(() => ({}))
+      throw new Error(json?.message || `HTTP ${res.status}`)
+    }
+
+    const data = await res.json().catch(() => ({}))
+    const imageUrl = String(data?.imageUrl || '').trim()
+    if (!imageUrl) {
+      throw new Error('Upload ảnh thất bại')
+    }
+
+    const socket = socketStore.connect()
+    socket.emit('send_chat_message', {
+      roomId: selectedRoomId.value,
+      content: '',
+      imageUrl,
+      token: userStore.token,
+      messageType: 'image'
+    }, () => {
+      sendingAdminImage.value = false
+    })
+  } catch (err) {
+    showToast(err?.message || 'Không thể gửi ảnh', 'error')
+    sendingAdminImage.value = false
+  }
 }
 
 let chatSocketCleanup=null
 function setupChatSocket() {
   const socket=socketStore.connect()
   if(chatSocketCleanup)chatSocketCleanup()
-  if(selectedRoomId.value)socket.emit('join_chat',{roomId:selectedRoomId.value})
+  socket.emit('join_chat_admin', { token: userStore.token }, () => {})
+  if(selectedRoomId.value)socket.emit('join_chat',{roomId:selectedRoomId.value,token:userStore.token})
   socket.on('chat_message',onAdminChatMessage)
-  chatSocketCleanup=()=>{socket.off('chat_message',onAdminChatMessage);if(selectedRoomId.value)socket.emit('leave_chat',{roomId:selectedRoomId.value})}
+  socket.on('chat_notify', onAdminChatNotify)
+  chatSocketCleanup=()=>{
+    socket.off('chat_message',onAdminChatMessage)
+    socket.off('chat_notify', onAdminChatNotify)
+    if(selectedRoomId.value)socket.emit('leave_chat',{roomId:selectedRoomId.value})
+  }
 }
-async function loadChatMessages(roomId) { if(!roomId){chatMessages.value=[];return}; const d=await apiFetch(`/api/admin/chat/messages/${roomId}`,{headers:userStore.authHeaders}); chatMessages.value=d.items||[] }
+async function loadChatMessages(roomId) {
+  if(!roomId){chatMessages.value=[]; selectedChatUser.value=null; return}
+  const d=await apiFetch(`/api/admin/chat/messages/${roomId}`,{headers:userStore.authHeaders})
+  chatMessages.value=d.items||[]
+  selectedChatUser.value = d.roomUser || null
+  unreadByRoom[roomId] = 0
+  await nextTick()
+  if (adminChatRef.value) adminChatRef.value.scrollTop = adminChatRef.value.scrollHeight
+}
 async function loadMobileChatRooms() { const d=await apiFetch('/api/admin/chat-mobile/rooms',{headers:userStore.authHeaders}); mobileChatRooms.value=d.items||[]; if(!selectedMobileRoomId.value&&mobileChatRooms.value.length)selectedMobileRoomId.value=mobileChatRooms.value[0].roomId }
 async function loadMobileChatMessages(roomId) { if(!roomId){mobileChatMessages.value=[];return}; const d=await apiFetch(`/api/admin/chat-mobile/messages/${roomId}`,{headers:userStore.authHeaders}); mobileChatMessages.value=d.items||[] }
 async function loadUserDetail(userId) { const d=await apiFetch(`/api/admin/users/${userId}`,{headers:userStore.authHeaders}); selectedUser.value=d.user||null }
 
 async function loadAllData() {
   loadingAll.value=true; loadError.value=''
-  try { await Promise.all([loadOverview(),loadUsers(),loadTransactions(),loadGameHistory(),loadRoundHistory(),loadGameSummary(),loadRevenue(),loadInviteCodes(),loadOddsSettings(selectedOddsRoomId.value),loadSicboControl(selectedOddsRoomId.value),loadSicbo5pControl(),loadPayoutSettings(),loadAdmins(),loadChatRooms(),loadMobileChatRooms(),loadSiteConfig(),loadAdminBanks()]) }
+  try { await Promise.all([loadOverview(),loadUsers(),loadTransactions(),loadGameHistory(),loadRoundHistory(),loadGameSummary(),loadRevenue(),loadInviteCodes(),loadOddsSettings(selectedOddsRoomId.value),loadSicboControl(selectedOddsRoomId.value),loadSicbo5pControl(),loadPayoutSettings(),loadAdmins(),loadChatStats(),loadChatRooms(),loadMobileChatRooms(),loadSiteConfig(),loadAdminBanks()]) }
   catch(e){loadError.value=e.message||'Không thể tải dữ liệu'} finally{loadingAll.value=false}
 }
 
@@ -1199,7 +1367,10 @@ async function adminAdjustBalance(userId, kind) {
     })
     if (kind === 'bonus') draft.bonusAmount = ''
     else draft.adjustAmount = ''
-    await loadUsers()
+    await refreshAdminData()
+    if (selectedUser.value?._id === key) {
+      await loadUserDetail(key)
+    }
     showToast('Đã cập nhật số dư')
   } catch (e) {
     showToast(e.message || 'Không thể cập nhật số dư', 'error')
@@ -1237,13 +1408,17 @@ async function adminSetVip(userId) {
   }
 }
 
-watch(selectedRoomId,async r=>{
-  await loadChatMessages(r)
-  // Rejoin chat socket for new room
-  const socket=socketStore.socket
-  if(socket){
-    socket.emit('leave_chat',{roomId:selectedRoomId.value})
-    if(r){socket.emit('join_chat',{roomId:r})}
+watch(selectedRoomId, async (nextRoom, prevRoom) => {
+  await loadChatMessages(nextRoom)
+
+  const socket = socketStore.socket
+  if (!socket) return
+
+  if (prevRoom) {
+    socket.emit('leave_chat', { roomId: prevRoom })
+  }
+  if (nextRoom) {
+    socket.emit('join_chat', { roomId: nextRoom, token: userStore.token })
   }
 })
 watch(selectedMobileRoomId,async r=>{ await loadMobileChatMessages(r) })
@@ -1744,6 +1919,12 @@ onBeforeUnmount(()=>{
   gap: 10px;
 }
 
+.odds-quick {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
 /* Detail grid */
 .detail-grid {
   display: grid;
@@ -1891,6 +2072,20 @@ onBeforeUnmount(()=>{
   color: #1a1a2e;
 }
 
+.chat-kpi {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.admin-chat-room__top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
 .admin-chat-room span {
   display: block;
   font-size: 11px;
@@ -1899,6 +2094,42 @@ onBeforeUnmount(()=>{
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.admin-chat-usercard {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px 12px;
+  padding: 12px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+  background: #ffffff;
+  border: 1px solid #eee;
+}
+
+.admin-chat-usercard span {
+  display: block;
+  font-size: 11px;
+  color: #999;
+}
+
+.admin-chat-usercard strong {
+  display: block;
+  font-size: 13px;
+  color: #1a1a2e;
+}
+
+.admin-chat-image {
+  display: block;
+  max-width: 260px;
+  max-height: 260px;
+  border-radius: 12px;
+  object-fit: cover;
+  margin-top: 6px;
+}
+
+.admin-chat-file {
+  display: none;
 }
 
 .admin-chat-messages {
@@ -1933,7 +2164,7 @@ onBeforeUnmount(()=>{
   margin-top: 12px;
 }
 
-.admin-chat-input input {
+.admin-chat-input input[type="text"] {
   flex: 1;
   height: 40px;
   padding: 0 14px;
@@ -1943,7 +2174,7 @@ onBeforeUnmount(()=>{
   outline: none;
 }
 
-.admin-chat-input input:focus {
+.admin-chat-input input[type="text"]:focus {
   border-color: #6378ff;
 }
 
@@ -2149,7 +2380,8 @@ onBeforeUnmount(()=>{
   .stats-row,
   .form-grid,
   .detail-grid,
-  .odds-grid {
+  .odds-grid,
+  .odds-quick {
     grid-template-columns: 1fr;
   }
 
@@ -2161,10 +2393,15 @@ onBeforeUnmount(()=>{
     grid-template-columns: 1fr;
   }
 
+  .panel-card {
+    overflow-x: auto;
+  }
+
   .data-table {
     display: block;
     overflow-x: auto;
     white-space: nowrap;
+    min-width: 920px;
   }
 }
 </style>
