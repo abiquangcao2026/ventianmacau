@@ -48,10 +48,6 @@
         <div class="sicbo-card__arrow sicbo-card__arrow--left"></div>
 
         <div class="sicbo-card__dice-grid">
-          <div class="sicbo-card__dice-timer">
-            {{ minuteText }} : {{ secondText }}
-          </div>
-
           <div class="sicbo-card__dice-lanes">
             <div
               v-for="(value, index) in displayDiceValues"
@@ -62,9 +58,7 @@
             </div>
           </div>
 
-          <div class="sicbo-card__dice-status">
-            {{ canBet ? 'Đang mở cược' : 'Đang chờ kết quả...' }}
-          </div>
+
         </div>
 
         <div class="sicbo-card__arrow sicbo-card__arrow--right"></div>
@@ -135,13 +129,7 @@
         </button>
       </div>
 
-      <div class="sicbo-panel__status">
-        <strong>{{ activeModeLabel }}</strong>
-        <em>{{ canBet ? 'Đang mở cược' : 'Đang chờ kết quả' }}</em>
-      </div>
-      <small class="sicbo-bet-hint">
-        Nhấn vào cửa cược để nhập số tiền ({{ formatMoney(sicboConfig.minBet) }} - {{ formatMoney(sicboConfig.maxBet) }}).
-      </small>
+
     </section>
 
     <section class="current-bets">
@@ -223,6 +211,32 @@
       </div>
     </section>
 
+    <!-- Bet bar -->
+    <div v-if="selectedGate" class="bet-bar">
+      <div class="bet-bar__info">
+        <span>Số tiền cược:</span>
+        <input
+          v-model.number="betAmount"
+          type="number"
+          class="bet-bar__input"
+          :min="sicboConfig.minBet"
+          :max="sicboConfig.maxBet"
+          placeholder="Chọn số tiền cược"
+        />
+      </div>
+      <div class="bet-bar__bottom">
+        <span class="bet-bar__summary">
+          Đã chọn <strong>{{ formatGateLabel(selectedGate) }}</strong>, Tổng tiền cược <strong class="bet-bar__total">{{ formatMoney(betAmount || 0) }}</strong>
+        </span>
+        <div class="bet-bar__actions">
+          <button class="bet-bar__cancel" type="button" @click="selectedGate = null">Hủy</button>
+          <button class="bet-bar__submit" :disabled="!canBet || submittingBet" type="button" @click="confirmBet">
+            {{ submittingBet ? 'Đang đặt...' : 'Đặt lệnh' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
     <div v-if="showGuide" class="guide-backdrop" @click.self="showGuide = false">
       <div class="guide-modal">
         <div class="guide-modal__head">
@@ -294,6 +308,9 @@ const sicboConfig = reactive({
 })
 
 const lastEnteredBetAmount = ref(1000)
+const selectedGate = ref(null)
+const betAmount = ref(1000)
+const submittingBet = ref(false)
 const myBets = ref([])
 const activeMode = ref('cltx')
 const activeHistoryTab = ref('table')
@@ -502,7 +519,7 @@ async function loadMyBets() {
   myBets.value = data.items || []
 }
 
-async function onBet(gate) {
+function onBet(gate) {
   if (!userStore.user?._id) {
     alert('Vui lòng đăng nhập trước khi đặt cược')
     return
@@ -513,36 +530,30 @@ async function onBet(gate) {
     return
   }
 
-  const rawInput = window.prompt(
-    `Nhập số tiền cược cho cửa ${formatGateLabel(gate)} (${formatMoney(sicboConfig.minBet)} - ${formatMoney(
-      sicboConfig.maxBet
-    )})`,
-    String(lastEnteredBetAmount.value || sicboConfig.minBet || 1000)
-  )
+  selectedGate.value = gate
+  betAmount.value = lastEnteredBetAmount.value || sicboConfig.minBet || 1000
+}
 
-  if (rawInput === null) {
-    return
-  }
+async function confirmBet() {
+  if (!selectedGate.value || !canBet.value) return
 
-  const amount = Math.floor(Number(String(rawInput).replace(/[^\d.]/g, '')))
-  if (!Number.isFinite(amount)) {
-    alert('Số tiền không hợp lệ')
-    return
-  }
-
-  if (amount < Number(sicboConfig.minBet || 0) || amount > Number(sicboConfig.maxBet || 0)) {
+  const amount = Math.floor(Number(betAmount.value || 0))
+  if (!Number.isFinite(amount) || amount < Number(sicboConfig.minBet || 0) || amount > Number(sicboConfig.maxBet || 0)) {
     alert(`Số tiền cược phải trong khoảng ${formatMoney(sicboConfig.minBet)} - ${formatMoney(sicboConfig.maxBet)}`)
     return
   }
 
   lastEnteredBetAmount.value = amount
+  submittingBet.value = true
 
   const response = await socketStore.placeBet({
     userId: userStore.user._id,
     roomId: currentRoomId.value,
-    gate,
+    gate: selectedGate.value,
     amount
   })
+
+  submittingBet.value = false
 
   if (!response?.ok) {
     alert(response?.message || 'Không thể đặt cược')
@@ -555,6 +566,8 @@ async function onBet(gate) {
   } else {
     await loadMyBets()
   }
+
+  selectedGate.value = null
 }
 
 async function joinCurrentRoom() {
@@ -613,7 +626,7 @@ onBeforeUnmount(() => {
 <style scoped>
 .sicbo-page {
   min-height: calc(100vh - 152px);
-  padding: 14px 12px 20px;
+  padding: 14px 12px 100px;
   background: #18325e;
 }
 
@@ -737,15 +750,15 @@ onBeforeUnmount(() => {
   display: flex;
   align-items: center;
   margin-top: 22px;
-  padding: 10px 8px;
-  border-radius: 14px;
-  background: linear-gradient(180deg, #24d384 0%, #11b76b 100%);
+  padding: 14px 10px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, #1ab070 0%, #003c26 100%);
 }
 
 .sicbo-card__arrow {
   width: 14px;
   height: 42px;
-  background: linear-gradient(180deg, #10d888 0%, #0cad6c 100%);
+  background: linear-gradient(180deg, #1ab070 0%, #006b3a 100%);
   clip-path: polygon(0 50%, 100% 0, 100% 100%);
   opacity: 1;
 }
@@ -761,11 +774,11 @@ onBeforeUnmount(() => {
 .sicbo-card__dice-grid {
   position: relative;
   flex: 1;
-  padding: 8px 8px 36px;
-  border-radius: 10px;
-  background: #111722;
-  border: 2px solid #0f2239;
-  min-height: 158px;
+  padding: 14px 10px;
+  border-radius: 16px;
+  background: #003c26;
+  border: 2px solid rgba(0,80,50,0.6);
+  min-height: 130px;
 }
 
 .sicbo-card__dice-timer {
@@ -793,18 +806,16 @@ onBeforeUnmount(() => {
 .sicbo-card__dice-slot {
   display: grid;
   place-items: center;
-  border-radius: 4px;
-  background:
-    linear-gradient(180deg, #2f3440 0%, #181c26 100%);
-  border: 1px solid rgba(0, 0, 0, 0.55);
-  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.4);
+  border-radius: 10px;
+  background: rgba(0, 60, 38, 0.6);
+  padding: 6px;
 }
 
 .sicbo-card__dice-item {
-  width: 70px;
-  height: 70px;
+  width: 80px;
+  height: 80px;
   object-fit: contain;
-  filter: drop-shadow(0 5px 8px rgba(0, 0, 0, 0.44));
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.5));
 }
 
 .sicbo-card__dice-status {
@@ -1119,6 +1130,103 @@ onBeforeUnmount(() => {
   color: #667384;
 }
 
+/* Bet bar */
+.bet-bar {
+  position: fixed;
+  left: 50%;
+  bottom: 78px;
+  z-index: 9989;
+  width: 100%;
+  max-width: 520px;
+  transform: translateX(-50%);
+  padding: 12px 16px 14px;
+  background: #101c3a;
+  border-top: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 -4px 20px rgba(0,0,0,0.4);
+}
+
+.bet-bar__info {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.bet-bar__info span {
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.bet-bar__input {
+  flex: 1;
+  height: 38px;
+  padding: 0 12px;
+  border: 1px solid rgba(255,255,255,0.2);
+  border-radius: 8px;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  font-size: 14px;
+  outline: none;
+}
+
+.bet-bar__input::placeholder {
+  color: rgba(255,255,255,0.35);
+}
+
+.bet-bar__bottom {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 10px;
+  gap: 12px;
+}
+
+.bet-bar__summary {
+  font-size: 13px;
+  color: rgba(255,255,255,0.7);
+}
+
+.bet-bar__summary strong {
+  color: #fff;
+}
+
+.bet-bar__total {
+  color: #ff9a3c !important;
+}
+
+.bet-bar__actions {
+  display: flex;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.bet-bar__cancel {
+  padding: 8px 14px;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(255,255,255,0.6);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.bet-bar__submit {
+  padding: 8px 20px;
+  border: none;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #3366ff, #5577ff);
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.bet-bar__submit:disabled {
+  opacity: 0.5;
+}
+
 .guide-backdrop {
   position: fixed;
   inset: 0;
@@ -1130,7 +1238,7 @@ onBeforeUnmount(() => {
 
 .guide-modal {
   width: 100%;
-  max-width: 414px;
+  max-width: 520px;
   margin: 0 auto;
   padding: 18px 16px 26px;
   border-top-left-radius: 24px;

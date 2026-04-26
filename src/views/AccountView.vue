@@ -1,131 +1,201 @@
 <template>
   <section class="account-page">
-    <!-- Thành Viên ribbon -->
-    <div class="member-ribbon">
-      <span class="member-ribbon__label">Thành Viên</span>
+    <!-- === PANEL LỊCH SỬ === -->
+    <div v-if="historyPanel" class="history-panel">
+      <div class="history-panel__header">
+        <button class="history-panel__back" @click="historyPanel = null">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <h2 class="history-panel__title">{{ historyTitle }}</h2>
+      </div>
+
+      <div v-if="loadingHistory" class="history-panel__empty">Đang tải...</div>
+      <div v-else-if="filteredHistory.length === 0" class="history-panel__empty">Chưa có giao dịch nào.</div>
+
+      <div v-else class="history-list">
+        <article v-for="tx in filteredHistory" :key="tx._id" class="history-item">
+          <div class="history-item__left">
+            <span class="history-item__type" :class="typeClass(tx.type)">{{ typeLabel(tx.type) }}</span>
+            <span class="history-item__date">{{ fmtDate(tx.createdAt) }}</span>
+          </div>
+          <div class="history-item__right">
+            <strong class="history-item__amount" :class="tx.amount >= 0 ? 'is-plus' : 'is-minus'">
+              {{ tx.amount >= 0 ? '+' : '' }}{{ fmtMoney(tx.amount) }}
+            </strong>
+            <span class="history-item__balance">Sau: {{ fmtMoney(tx.balanceAfter) }}</span>
+          </div>
+        </article>
+      </div>
     </div>
 
-    <!-- Avatar + Info card -->
-    <div class="member-card">
-      <div class="member-card__avatar">
-        <div class="member-card__avatar-ring">
-          <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <circle cx="32" cy="24" r="12" fill="rgba(255,255,255,0.85)"/>
-            <path d="M12 56c0-11 9-20 20-20s20 9 20 20" fill="rgba(255,255,255,0.85)"/>
-          </svg>
+    <!-- === TRANG CHÍNH === -->
+    <template v-else>
+      <!-- Thành Viên ribbon -->
+      <div class="member-ribbon">
+        <span class="member-ribbon__label">Thành Viên</span>
+      </div>
+
+      <!-- Avatar + Info card -->
+      <div class="member-card">
+        <div class="member-card__avatar">
+          <div class="member-card__avatar-ring">
+            <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <circle cx="32" cy="24" r="12" fill="rgba(255,255,255,0.85)"/>
+              <path d="M12 56c0-11 9-20 20-20s20 9 20 20" fill="rgba(255,255,255,0.85)"/>
+            </svg>
+          </div>
+        </div>
+        <h2 class="member-card__username">{{ userStore.user?.username || 'Người chơi' }}</h2>
+        <p class="member-card__balance">$ {{ Number(balance || 0).toFixed(0) }}</p>
+
+        <div class="member-card__actions">
+          <RouterLink class="member-card__action-btn" to="/deposit">
+            <span class="member-card__action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="12" y1="9" x2="12" y2="15"/><line x1="9" y1="12" x2="15" y2="12"/>
+              </svg>
+            </span>
+            <span>Nạp tiền</span>
+          </RouterLink>
+          <RouterLink class="member-card__action-btn" to="/withdraw">
+            <span class="member-card__action-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="9" y1="12" x2="15" y2="12"/>
+              </svg>
+            </span>
+            <span>Rút tiền</span>
+          </RouterLink>
         </div>
       </div>
-      <h2 class="member-card__username">{{ userStore.user?.username || 'Người chơi' }}</h2>
-      <p class="member-card__balance">$ {{ Number(balance || 0).toFixed(0) }}</p>
 
-      <div class="member-card__actions">
-        <RouterLink class="member-card__action-btn" to="/deposit">
-          <span class="member-card__action-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="12" y1="9" x2="12" y2="15"/>
-              <line x1="9" y1="12" x2="15" y2="12"/>
-            </svg>
+      <!-- Menu list -->
+      <div class="menu-list">
+        <button class="menu-item" type="button" @click="openHistory('bets')">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/></svg>
           </span>
-          <span>Nạp tiền</span>
-        </RouterLink>
-        <RouterLink class="member-card__action-btn" to="/withdraw">
-          <span class="member-card__action-icon">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <rect x="2" y="5" width="20" height="14" rx="2"/>
-              <line x1="9" y1="12" x2="15" y2="12"/>
-            </svg>
+          <span class="menu-item__label">Lịch sử tham gia</span>
+          <span class="menu-item__chevron">›</span>
+        </button>
+
+        <button class="menu-item" type="button" @click="openHistory('all')">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="3" width="18" height="18" rx="3"/><path d="M7 12h10M12 7v10"/></svg>
           </span>
-          <span>Rút tiền</span>
+          <span class="menu-item__label">Biến động số dư</span>
+          <span class="menu-item__chevron">›</span>
+        </button>
+
+        <button class="menu-item" type="button" @click="openHistory('deposit')">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 7h20v12H2z"/><path d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2"/></svg>
+          </span>
+          <span class="menu-item__label">Lịch sử nạp</span>
+          <span class="menu-item__chevron">›</span>
+        </button>
+
+        <button class="menu-item" type="button" @click="openHistory('withdraw')">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="6" width="20" height="12" rx="2"/><circle cx="12" cy="12" r="3"/></svg>
+          </span>
+          <span class="menu-item__label">Lịch sử rút</span>
+          <span class="menu-item__chevron">›</span>
+        </button>
+
+        <RouterLink class="menu-item" to="/addbank">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/></svg>
+          </span>
+          <span class="menu-item__label">Liên kết ngân hàng</span>
+          <span class="menu-item__chevron">›</span>
         </RouterLink>
+
+        <button class="menu-item menu-item--logout" type="button" @click="handleLogout">
+          <span class="menu-item__icon">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+          </span>
+          <span class="menu-item__label">Đăng xuất</span>
+          <span class="menu-item__chevron">›</span>
+        </button>
       </div>
-    </div>
-
-    <!-- Menu list -->
-    <div class="menu-list">
-      <RouterLink class="menu-item" to="/account">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M3 3h7v7H3zM14 3h7v7h-7zM3 14h7v7H3zM14 14h7v7h-7z"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Lịch sử tham gia</span>
-        <span class="menu-item__chevron">›</span>
-      </RouterLink>
-
-      <button class="menu-item" type="button" @click="showTransactionHistory('balance')">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="3" y="3" width="18" height="18" rx="3"/>
-            <path d="M7 12h10M12 7v10"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Biến động số dư</span>
-        <span class="menu-item__chevron">›</span>
-      </button>
-
-      <button class="menu-item" type="button" @click="showTransactionHistory('deposit')">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M2 7h20v12H2z"/>
-            <path d="M6 7V5a2 2 0 012-2h8a2 2 0 012 2v2"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Lịch sử nạp</span>
-        <span class="menu-item__chevron">›</span>
-      </button>
-
-      <button class="menu-item" type="button" @click="showTransactionHistory('withdraw')">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="2" y="6" width="20" height="12" rx="2"/>
-            <circle cx="12" cy="12" r="3"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Lịch sử rút</span>
-        <span class="menu-item__chevron">›</span>
-      </button>
-
-      <button class="menu-item" type="button" @click="showBankLink">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M3 21h18M3 10h18M5 6l7-3 7 3M4 10v11M20 10v11M8 14v3M12 14v3M16 14v3"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Liên kết ngân hàng</span>
-        <span class="menu-item__chevron">›</span>
-      </button>
-
-      <button class="menu-item menu-item--logout" type="button" @click="handleLogout">
-        <span class="menu-item__icon">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/>
-          </svg>
-        </span>
-        <span class="menu-item__label">Đăng xuất</span>
-        <span class="menu-item__chevron">›</span>
-      </button>
-    </div>
+    </template>
   </section>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref } from 'vue'
 import { RouterLink, useRouter } from 'vue-router'
+import { apiFetch } from '@/lib/api'
 import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const userStore = useUserStore()
 const balance = computed(() => userStore.balance)
 
-function showTransactionHistory(type) {
-  // Future: navigate to filtered transaction history
-  alert('Tính năng đang phát triển')
+// --- History panel ---
+const historyPanel = ref(null)   // null | 'all' | 'deposit' | 'withdraw' | 'bets'
+const loadingHistory = ref(false)
+const allTransactions = ref([])
+
+const TITLES = {
+  all: 'Biến động số dư',
+  deposit: 'Lịch sử nạp',
+  withdraw: 'Lịch sử rút',
+  bets: 'Lịch sử tham gia'
 }
 
-function showBankLink() {
-  router.push('/withdraw')
+const DEPOSIT_TYPES = ['deposit_pending', 'deposit', 'deposit_rejected']
+const WITHDRAW_TYPES = ['withdraw_pending', 'withdraw', 'withdraw_rejected']
+const BET_TYPES = ['bet', 'win', 'refund']
+
+const historyTitle = computed(() => TITLES[historyPanel.value] || 'Giao dịch')
+
+const filteredHistory = computed(() => {
+  const items = allTransactions.value
+  const panel = historyPanel.value
+  if (panel === 'deposit') return items.filter(t => DEPOSIT_TYPES.includes(t.type))
+  if (panel === 'withdraw') return items.filter(t => WITHDRAW_TYPES.includes(t.type))
+  if (panel === 'bets') return items.filter(t => BET_TYPES.includes(t.type))
+  return items // 'all'
+})
+
+async function openHistory(type) {
+  historyPanel.value = type
+  loadingHistory.value = true
+  try {
+    const data = await apiFetch('/api/account/transactions', { headers: userStore.authHeaders })
+    allTransactions.value = data.items || []
+  } catch {
+    allTransactions.value = []
+  } finally {
+    loadingHistory.value = false
+  }
 }
+
+// --- Helpers ---
+const TYPE_LABELS = {
+  deposit_pending: 'Yêu cầu nạp',
+  deposit: 'Nạp thành công',
+  deposit_rejected: 'Từ chối nạp',
+  withdraw_pending: 'Yêu cầu rút',
+  withdraw: 'Rút thành công',
+  withdraw_rejected: 'Từ chối rút',
+  bet: 'Đặt cược',
+  win: 'Thắng cược',
+  refund: 'Hoàn cược'
+}
+
+function typeLabel(type) { return TYPE_LABELS[type] || type || 'Giao dịch' }
+
+function typeClass(type) {
+  if (type === 'deposit' || type === 'win' || type === 'refund') return 'type-green'
+  if (type === 'deposit_rejected' || type === 'withdraw_rejected') return 'type-red'
+  if (type === 'bet' || type === 'withdraw') return 'type-orange'
+  return ''
+}
+
+function fmtMoney(v) { return new Intl.NumberFormat('vi-VN').format(Number(v || 0)) + ' đ' }
+function fmtDate(v) { return v ? new Date(v).toLocaleString('vi-VN') : '--' }
 
 function handleLogout() {
   userStore.logout()
@@ -139,6 +209,109 @@ function handleLogout() {
   padding: 0 0 20px;
   color: #fff;
 }
+
+/* ===== HISTORY PANEL ===== */
+.history-panel {
+  padding: 0 16px 20px;
+}
+
+.history-panel__header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 0 14px;
+}
+
+.history-panel__back {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.08);
+  color: #fff;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.history-panel__back:active {
+  background: rgba(255,255,255,0.14);
+}
+
+.history-panel__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.history-panel__empty {
+  padding: 40px 0;
+  text-align: center;
+  color: rgba(255,255,255,0.45);
+  font-size: 14px;
+}
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.history-item:last-child {
+  border-bottom: none;
+}
+
+.history-item__left,
+.history-item__right {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.history-item__right {
+  align-items: flex-end;
+  flex-shrink: 0;
+}
+
+.history-item__type {
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255,255,255,0.9);
+}
+
+.history-item__type.type-green { color: #6ee7a0; }
+.history-item__type.type-red   { color: #ff8a8a; }
+.history-item__type.type-orange { color: #ffb86c; }
+
+.history-item__date {
+  font-size: 12px;
+  color: rgba(255,255,255,0.4);
+}
+
+.history-item__amount {
+  font-size: 15px;
+  font-weight: 700;
+}
+
+.history-item__amount.is-plus  { color: #6ee7a0; }
+.history-item__amount.is-minus { color: #ff8a8a; }
+
+.history-item__balance {
+  font-size: 11px;
+  color: rgba(255,255,255,0.35);
+}
+
+/* ===== MAIN PAGE ===== */
 
 /* Thành Viên ribbon */
 .member-ribbon {

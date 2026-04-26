@@ -9,155 +9,75 @@
         </svg>
       </div>
       <div class="chat-header__info">
-        <strong>The Venetian</strong>
-        <span>Hỗ trợ</span>
+        <strong>The Venetian®</strong>
+        <span>Hỗ trợ trực tuyến</span>
       </div>
     </div>
 
     <!-- Chat messages -->
     <div class="chat-messages" ref="messagesRef">
-      <div class="chat-date">
-        <span>Hôm nay</span>
-      </div>
-
-      <!-- Welcome message -->
+      <!-- System welcome -->
       <div class="chat-bubble chat-bubble--bot">
         <div class="chat-bubble__content">
-          <p>Xin chào! Chào mừng bạn đến với The Venetian Casino. Chúng tôi hỗ trợ bạn 24/7.</p>
-        </div>
-        <span class="chat-bubble__time">{{ currentTime }}</span>
-      </div>
-
-      <!-- Promo image -->
-      <div class="chat-bubble chat-bubble--bot">
-        <div class="chat-bubble__content chat-bubble__content--image">
-          <img src="/img/slide6.73e796c.jpg" alt="Casino" />
+          <p>Xin chào! Chào mừng bạn đến với <strong>The Venetian® Macau Casino</strong>. Nhân viên hỗ trợ sẵn sàng giúp bạn 24/7.</p>
         </div>
       </div>
 
-      <!-- VIP info -->
-      <div class="chat-bubble chat-bubble--bot">
+      <div v-if="loading" class="chat-loading">Đang tải tin nhắn...</div>
+
+      <div
+        v-for="msg in messages"
+        :key="msg._id"
+        class="chat-bubble"
+        :class="msg.senderId === userId ? 'chat-bubble--user' : 'chat-bubble--bot'"
+      >
+        <span v-if="msg.senderId !== userId" class="chat-bubble__name">{{ msg.senderName }}</span>
         <div class="chat-bubble__content">
-          <p><strong>Nâng cấp đặc quyền VIP</strong></p>
-          <p>Bảng tích lũy thưởng nạp khi nâng cấp VIP:</p>
-          <div class="vip-table">
-            <div class="vip-row vip-row--header">
-              <span>Tích lũy</span>
-              <span>Cấp</span>
-              <span>Thưởng</span>
-              <span>Hạn mức</span>
-            </div>
-            <div class="vip-row">
-              <span>2.000</span><span>VIP 1</span><span>100$</span><span>5.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>5.000</span><span>VIP 2</span><span>200$</span><span>10.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>10.000</span><span>VIP 3</span><span>500$</span><span>30.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>50.000</span><span>VIP 4</span><span>1.000$</span><span>80.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>100.000</span><span>VIP 5</span><span>3.000$</span><span>200.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>200.000</span><span>VIP 6</span><span>5.000$</span><span>400.000$</span>
-            </div>
-            <div class="vip-row">
-              <span>500.000</span><span>VIP 7</span><span>20.000$</span><span>1.000.000$</span>
-            </div>
-          </div>
+          <p>{{ msg.content }}</p>
         </div>
-      </div>
-
-      <!-- User messages -->
-      <div v-for="msg in userMessages" :key="msg.id" class="chat-bubble" :class="msg.isBot ? 'chat-bubble--bot' : 'chat-bubble--user'">
-        <div class="chat-bubble__content">
-          <p>{{ msg.text }}</p>
-        </div>
-        <span class="chat-bubble__time">{{ msg.time }}</span>
+        <span class="chat-bubble__time">{{ fmtTime(msg.createdAt) }}</span>
       </div>
     </div>
 
     <!-- Chat input -->
     <div class="chat-input">
-      <button class="chat-input__btn" type="button">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <rect x="3" y="3" width="18" height="18" rx="4"/>
-          <circle cx="8" cy="10" r="1.5" fill="currentColor"/>
-          <path d="M21 15l-5-5L5 21"/>
-        </svg>
-      </button>
-      <button class="chat-input__btn" type="button">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-          <path d="M14 9V5a3 3 0 00-6 0v4"/>
-          <path d="M5 9h14l-1 10H6L5 9z"/>
-          <circle cx="9" cy="14" r="1" fill="currentColor"/>
-          <circle cx="15" cy="14" r="1" fill="currentColor"/>
-        </svg>
-      </button>
       <input
         v-model.trim="chatInput"
         type="text"
         class="chat-input__field"
-        placeholder="Vui lòng nhập"
+        placeholder="Nhập tin nhắn..."
         @keyup.enter="sendMessage"
       />
-      <button class="chat-input__send" type="button" @click="sendMessage">
-        Gửi đi
+      <button class="chat-input__send" type="button" :disabled="sending" @click="sendMessage">
+        Gửi
       </button>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, nextTick, onMounted, ref } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
+import { apiFetch } from '@/lib/api'
+import { useUserStore } from '@/stores/user'
+import { useSocketStore } from '@/stores/socket'
+
+const ROOM_ID = 'support'
+
+const userStore = useUserStore()
+const socketStore = useSocketStore()
 
 const messagesRef = ref(null)
 const chatInput = ref('')
-const userMessages = ref([])
+const messages = ref([])
+const loading = ref(false)
+const sending = ref(false)
 
-const currentTime = computed(() => {
-  const now = new Date()
-  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-})
+const userId = computed(() => userStore.user?._id || null)
 
-function getTimeNow() {
-  const now = new Date()
-  return `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}`
-}
-
-let msgId = 0
-
-async function sendMessage() {
-  const text = chatInput.value.trim()
-  if (!text) return
-
-  userMessages.value.push({
-    id: ++msgId,
-    text,
-    isBot: false,
-    time: getTimeNow()
-  })
-
-  chatInput.value = ''
-
-  await nextTick()
-  scrollToBottom()
-
-  // Auto-reply after a short delay
-  setTimeout(async () => {
-    userMessages.value.push({
-      id: ++msgId,
-      text: 'Cảm ơn bạn đã liên hệ. Nhân viên CSKH sẽ hỗ trợ bạn trong thời gian sớm nhất!',
-      isBot: true,
-      time: getTimeNow()
-    })
-    await nextTick()
-    scrollToBottom()
-  }, 800)
+function fmtTime(v) {
+  if (!v) return ''
+  const d = new Date(v)
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`
 }
 
 function scrollToBottom() {
@@ -166,228 +86,215 @@ function scrollToBottom() {
   }
 }
 
-onMounted(scrollToBottom)
+async function loadMessages() {
+  if (!userStore.isLoggedIn) return
+  loading.value = true
+  try {
+    const data = await apiFetch(`/api/account/chat/${ROOM_ID}`, { headers: userStore.authHeaders })
+    messages.value = data.items || []
+  } catch {
+    // API might not exist for user — ignore
+    messages.value = []
+  } finally {
+    loading.value = false
+    await nextTick()
+    scrollToBottom()
+  }
+}
+
+function sendMessage() {
+  const text = chatInput.value.trim()
+  if (!text || !userStore.isLoggedIn || sending.value) return
+
+  sending.value = true
+  const socket = socketStore.connect()
+
+  socket.emit('send_chat_message', {
+    roomId: ROOM_ID,
+    content: text,
+    token: userStore.token
+  }, () => {
+    sending.value = false
+  })
+
+  chatInput.value = ''
+}
+
+function onChatMessage(msg) {
+  if (msg.roomId !== ROOM_ID) return
+  // Avoid duplicates
+  if (messages.value.some(m => m._id === msg._id)) return
+  messages.value.push(msg)
+  nextTick(scrollToBottom)
+}
+
+onMounted(async () => {
+  await loadMessages()
+
+  if (userStore.isLoggedIn) {
+    const socket = socketStore.connect()
+    socket.emit('join_chat', { roomId: ROOM_ID })
+    socket.on('chat_message', onChatMessage)
+  }
+})
+
+onBeforeUnmount(() => {
+  const socket = socketStore.socket
+  if (socket) {
+    socket.emit('leave_chat', { roomId: ROOM_ID })
+    socket.off('chat_message', onChatMessage)
+  }
+})
 </script>
 
 <style scoped>
+/* TỔNG THỂ KHUNG CHAT */
 .chat-page {
   display: flex;
   flex-direction: column;
-  min-height: calc(100vh - 152px);
-  background: #f5f5f5;
+  min-height: calc(100dvh - 152px);
+  background: #f8f9fa; /* Nền sáng sang trọng */
   color: #333;
+  font-family: 'Inter', sans-serif;
 }
 
-/* Header */
+/* HEADER: Navy & Gold chuẩn Venetian */
 .chat-header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px 16px;
-  background: #fff;
-  border-bottom: 1px solid #e8e8e8;
+  gap: 12px;
+  padding: 18px 16px;
+  background: linear-gradient(135deg, #001a33 0%, #003366 100%);
+  border-bottom: 1.5px solid #d4af37; /* Viền Gold mảnh */
 }
 
 .chat-header__avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
   width: 42px;
   height: 42px;
   border-radius: 50%;
-  background: #fff3ee;
-  flex-shrink: 0;
-}
-
-.chat-header__info {
+  background: #d4af37; /* Màu vàng kim loại */
   display: flex;
-  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.5);
 }
 
 .chat-header__info strong {
-  font-size: 15px;
-  color: #1a1a2e;
+  display: block;
+  font-size: 16px;
+  color: #d4af37; /* Chữ Gold */
+  letter-spacing: 1px;
+  text-transform: uppercase;
 }
 
 .chat-header__info span {
-  font-size: 12px;
-  color: #999;
+  font-size: 11px;
+  color: #ffffff;
+  opacity: 0.8;
+  letter-spacing: 0.5px;
 }
 
-/* Messages */
+/* NỘI DUNG TIN NHẮN */
 .chat-messages {
   flex: 1;
-  padding: 16px;
+  padding: 20px 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 15px;
+  background: #ffffff;
 }
 
-.chat-date {
-  text-align: center;
-  padding: 8px 0;
-}
-
-.chat-date span {
-  font-size: 12px;
-  color: #999;
-  background: #eee;
-  padding: 4px 14px;
-  border-radius: 12px;
-}
-
-/* Bubble */
 .chat-bubble {
   display: flex;
   flex-direction: column;
-  max-width: 85%;
+  max-width: 80%;
 }
 
-.chat-bubble--bot {
-  align-self: flex-start;
-}
+.chat-bubble--bot { align-self: flex-start; }
+.chat-bubble--user { align-self: flex-end; }
 
-.chat-bubble--user {
-  align-self: flex-end;
+.chat-bubble__name {
+  font-size: 11px;
+  color: #d4af37; /* Tên bot màu Gold */
+  margin-bottom: 4px;
+  font-weight: 600;
 }
 
 .chat-bubble__content {
-  padding: 12px 14px;
-  border-radius: 16px;
+  padding: 12px 16px;
+  border-radius: 18px;
   font-size: 14px;
-  line-height: 1.5;
+  line-height: 1.6;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.04);
 }
 
+/* Bubble Bot: Trắng tinh tế */
 .chat-bubble--bot .chat-bubble__content {
-  background: #fff;
-  color: #333;
+  background: #f1f3f5;
+  color: #2c3e50;
   border-bottom-left-radius: 4px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  border: 1px solid #e9ecef;
 }
 
+/* Bubble User: Navy sang trọng */
 .chat-bubble--user .chat-bubble__content {
-  background: linear-gradient(135deg, #667eea, #764ba2);
+  background: linear-gradient(135deg, #001f3f, #003366);
   color: #fff;
   border-bottom-right-radius: 4px;
 }
 
-.chat-bubble__content p {
-  margin: 0;
-}
-
-.chat-bubble__content p + p {
-  margin-top: 6px;
-}
-
-.chat-bubble__content--image {
-  padding: 4px;
-  overflow: hidden;
-}
-
-.chat-bubble__content--image img {
-  width: 100%;
-  max-width: 300px;
-  border-radius: 12px;
-  display: block;
-}
-
 .chat-bubble__time {
-  font-size: 11px;
-  color: #aaa;
-  margin-top: 4px;
-  padding: 0 4px;
-}
-
-.chat-bubble--user .chat-bubble__time {
-  text-align: right;
-}
-
-/* VIP table */
-.vip-table {
-  margin-top: 10px;
-  border-radius: 8px;
-  overflow: hidden;
-  border: 1px solid #eee;
-}
-
-.vip-row {
-  display: grid;
-  grid-template-columns: 1.2fr 0.8fr 0.8fr 1fr;
-  gap: 0;
-}
-
-.vip-row span {
-  padding: 8px 6px;
-  font-size: 11px;
-  border-bottom: 1px solid #f0f0f0;
-  text-align: center;
-}
-
-.vip-row--header {
-  background: #f8f0dd;
-}
-
-.vip-row--header span {
-  font-weight: 700;
   font-size: 10px;
-  color: #8b6914;
-  text-transform: uppercase;
+  color: #adb5bd;
+  margin-top: 5px;
 }
 
-/* Input */
+/* INPUT AREA: Sạch sẽ & Tinh xảo */
 .chat-input {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 12px;
-  background: #fff;
-  border-top: 1px solid #e8e8e8;
-}
-
-.chat-input__btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  border: none;
-  background: transparent;
-  color: #999;
-  cursor: pointer;
-  flex-shrink: 0;
+  gap: 10px;
+  padding: 15px 12px;
+  background: #ffffff;
+  border-top: 1px solid #f1f3f5;
+  position: sticky;
+  bottom: calc(78px + env(safe-area-inset-bottom, 0px));
 }
 
 .chat-input__field {
   flex: 1;
-  height: 38px;
-  padding: 0 14px;
-  border: 1px solid #e0e0e0;
-  border-radius: 19px;
-  background: #f8f8f8;
-  color: #333;
+  height: 44px;
+  padding: 0 18px;
+  border: 1px solid #dee2e6;
+  border-radius: 25px;
+  background: #f8f9fa;
   font-size: 14px;
-  outline: none;
+  transition: all 0.3s ease;
 }
 
-.chat-input__field::placeholder {
-  color: #bbb;
+.chat-input__field:focus {
+  border-color: #d4af37;
+  background: #fff;
+  box-shadow: 0 0 8px rgba(212, 175, 55, 0.2);
 }
 
 .chat-input__send {
-  padding: 8px 16px;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  background: #fff;
-  color: #333;
+  padding: 0 22px;
+  height: 40px;
+  border: none;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #d4af37, #b8860b); /* Nút gửi màu Gold */
+  color: #001f3f;
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 800;
+  text-transform: uppercase;
   cursor: pointer;
-  white-space: nowrap;
-  flex-shrink: 0;
+  box-shadow: 0 4px 10px rgba(184, 134, 11, 0.3);
 }
 
-.chat-input__send:active {
-  background: #f0f0f0;
+.chat-input__send:disabled {
+  opacity: 0.4;
+  background: #ced4da;
 }
 </style>

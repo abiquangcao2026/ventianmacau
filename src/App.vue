@@ -5,19 +5,28 @@
         <img alt="The Venetian" src="/img/the-venetian-wordmark.svg" />
       </RouterLink>
 
+      <!-- Đã đăng nhập: hiện balance + icons -->
       <div v-if="userStore.isLoggedIn" class="member-header__right">
         <span class="member-header__balance">$ {{ Number(userStore.balance || 0).toFixed(0) }}</span>
         <RouterLink class="member-header__icon-btn" to="/support">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z"/>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12a8 8 0 0116 0v5a3 3 0 01-3 3h-2"/>
+            <path d="M4 12v3a2 2 0 002 2h1v-7H6a2 2 0 00-2 2z"/>
+            <path d="M20 12v3a2 2 0 01-2 2h-1v-7h1a2 2 0 012 2z"/>
           </svg>
         </RouterLink>
         <RouterLink class="member-header__icon-btn" to="/account">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21a8 8 0 00-16 0"/>
+            <path d="M12 11a4 4 0 100-8 4 4 0 000 8z"/>
           </svg>
         </RouterLink>
+      </div>
+
+      <!-- Chưa đăng nhập: hiện nút Đăng nhập / Đăng ký -->
+      <div v-else class="member-header__right">
+        <RouterLink class="member-header__auth-btn" to="/login">Đăng nhập</RouterLink>
+        <RouterLink class="member-header__auth-btn member-header__auth-btn--primary" to="/signup">Đăng ký</RouterLink>
       </div>
     </header>
 
@@ -28,9 +37,9 @@
     <nav class="member-nav">
       <RouterLink class="member-nav__item" to="/account">
         <span class="member-nav__icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-            <circle cx="12" cy="7" r="4"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 21a8 8 0 00-16 0"/>
+            <path d="M12 11a4 4 0 100-8 4 4 0 000 8z"/>
           </svg>
         </span>
         <span>Tài Khoản</span>
@@ -38,10 +47,11 @@
 
       <RouterLink class="member-nav__item" to="/deposit">
         <span class="member-nav__icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="2" y="5" width="20" height="14" rx="2"/>
-            <line x1="12" y1="9" x2="12" y2="15"/>
-            <line x1="9" y1="12" x2="15" y2="12"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 3v9"/>
+            <path d="M8.8 9.6L12 12.8l3.2-3.2"/>
+            <path d="M4 14v4a3 3 0 003 3h10a3 3 0 003-3v-4"/>
+            <path d="M4 14h16"/>
           </svg>
         </span>
         <span>Nạp Tiền</span>
@@ -59,9 +69,11 @@
 
       <RouterLink class="member-nav__item" to="/withdraw">
         <span class="member-nav__icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <rect x="2" y="5" width="20" height="14" rx="2"/>
-            <circle cx="12" cy="12" r="3"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 21V12"/>
+            <path d="M8.8 15.2L12 12l3.2 3.2"/>
+            <path d="M4 10V6a3 3 0 013-3h10a3 3 0 013 3v4"/>
+            <path d="M4 10h16"/>
           </svg>
         </span>
         <span>Rút Tiền</span>
@@ -69,8 +81,10 @@
 
       <RouterLink class="member-nav__item" to="/support">
         <span class="member-nav__icon">
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
-            <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12c0 1.82.487 3.53 1.338 5L2 22l5-1.338A9.96 9.96 0 0012 22z"/>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12a8 8 0 0116 0v5a3 3 0 01-3 3h-2"/>
+            <path d="M4 12v3a2 2 0 002 2h1v-7H6a2 2 0 00-2 2z"/>
+            <path d="M20 12v3a2 2 0 01-2 2h-1v-7h1a2 2 0 012 2z"/>
           </svg>
         </span>
         <span>CSKH</span>
@@ -100,10 +114,10 @@ onMounted(async () => {
 .member-shell {
   position: relative;
   width: 100%;
-  max-width: 414px;
+  max-width: 520px;
   min-height: 100vh;
   margin: 0 auto;
-  padding-bottom: 86px;
+  padding-bottom: calc(86px + env(safe-area-inset-bottom, 0px));
   background:
     radial-gradient(circle at top, rgba(50, 95, 168, 0.28), transparent 28%),
     linear-gradient(180deg, #1a3763 0, #170b34 148px, #170b34 100%);
@@ -114,7 +128,7 @@ onMounted(async () => {
 .member-header {
   position: sticky;
   top: 0;
-  z-index: 40;
+  z-index: 9991;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -163,6 +177,34 @@ onMounted(async () => {
   text-decoration: none;
 }
 
+.member-header__auth-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.member-header__auth-btn:active {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.member-header__auth-btn--primary {
+  background: linear-gradient(135deg, #ffd58b, #ff965f);
+  color: #1a1a2e;
+}
+
+.member-header__auth-btn--primary:active {
+  background: linear-gradient(135deg, #ffc96b, #f0854f);
+}
+
 /* Main */
 .member-main {
   min-height: calc(100vh - 152px);
@@ -173,17 +215,17 @@ onMounted(async () => {
   position: fixed;
   left: 50%;
   bottom: 0;
-  z-index: 30;
+  z-index: 9990;
   width: 100%;
-  max-width: 414px;
-  height: 78px;
+  max-width: 520px;
+  height: calc(78px + env(safe-area-inset-bottom, 0px));
   transform: translateX(-50%);
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   align-items: end;
-  padding: 0 6px 8px;
-  background: linear-gradient(180deg, rgba(23, 11, 52, 0.2), rgba(15, 8, 35, 0.98) 35%);
-  border-top: 1px solid rgba(255, 255, 255, 0.04);
+  padding: 0 6px calc(8px + env(safe-area-inset-bottom, 0px));
+  background: #0e0820;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 }
 
 .member-nav__item {
@@ -236,7 +278,7 @@ onMounted(async () => {
   margin-top: 2px;
 }
 
-@media (max-width: 414px) {
+@media (max-width: 520px) {
   .member-header {
     padding-left: 12px;
     padding-right: 12px;

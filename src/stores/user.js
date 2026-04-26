@@ -24,6 +24,12 @@ function mapTransactionType(type) {
       return 'Thắng cược'
     case 'refund':
       return 'Hoàn cược'
+    case 'admin_credit':
+      return 'Admin cộng'
+    case 'admin_debit':
+      return 'Admin trừ'
+    case 'admin_bonus':
+      return 'Admin thưởng'
     default:
       return 'Giao dịch'
   }

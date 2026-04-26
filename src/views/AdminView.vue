@@ -3,7 +3,10 @@
     <!-- Sidebar -->
     <aside class="sidebar" :class="{ 'sidebar--open': sidebarOpen }">
       <div class="sidebar__brand">
-        <img alt="The Venetian" src="/img/the-venetian-wordmark.svg" class="sidebar__logo" />
+        <div class="sidebar__brand-info">
+          <img alt="The Venetian® Macau" src="/img/the-venetian-wordmark.svg" class="sidebar__logo" />
+          <span class="sidebar__domain">admin.casinovenetianmacau.com</span>
+        </div>
         <button class="sidebar__close" @click="sidebarOpen = false">✕</button>
       </div>
 
@@ -154,42 +157,78 @@
       <!-- Users -->
       <div v-if="activeTab === 'users'" class="admin-panel">
         <div class="panel-card">
-          <div class="panel-card__header"><h3>Người chơi</h3><span class="badge">{{ users.length }}</span></div>
-          <div v-if="users.length === 0" class="panel-card__empty">Chưa có dữ liệu người chơi.</div>
-          <table v-else class="data-table">
-            <thead>
-              <tr>
-                <th>Tên</th>
-                <th>Username</th>
-                <th>SĐT</th>
-                <th>Số dư</th>
-                <th>Tổng nạp</th>
-                <th>Trạng thái</th>
-                <th>Hành động</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="member in users" :key="member._id">
-                <td>{{ member.fullName || member.username }}</td>
-                <td>@{{ member.username }}</td>
-                <td>{{ member.phone || '--' }}</td>
-                <td>{{ formatMoney(member.balance) }}</td>
-                <td>{{ formatMoney(member.totalDeposit) }}</td>
-                <td>
-                  <span class="badge" :class="member.status === 'active' ? 'badge--success' : 'badge--danger'">
-                    {{ member.status }}
-                  </span>
-                </td>
-                <td>
-                  <div class="action-btns">
-                    <button v-if="member.role !== 'admin' && member.status === 'active'" class="btn btn--danger btn--sm" @click="toggleUserStatus(member._id, 'locked')">Khóa</button>
-                    <button v-else-if="member.role !== 'admin'" class="btn btn--success btn--sm" @click="toggleUserStatus(member._id, 'active')">Mở khóa</button>
-                    <button class="btn btn--primary btn--sm" @click="loadUserDetail(member._id)">Chi tiết</button>
-                  </div>
-                </td>
-              </tr>
-            </tbody>
-          </table>
+          <div class="panel-card__header panel-card__header--with-tools">
+            <h3>Người chơi</h3>
+            <span class="badge">{{ filteredUsers.length }}</span>
+            <input v-model.trim="userSearchKeyword" class="inline-input" placeholder="Tìm kiếm" />
+          </div>
+          <div v-if="filteredUsers.length === 0" class="panel-card__empty">Chưa có dữ liệu người chơi.</div>
+          <div v-else class="table-scroll">
+            <table class="data-table data-table--dense">
+              <thead>
+                <tr>
+                  <th>ID USER</th>
+                  <th>USERNAME</th>
+                  <th>IP</th>
+                  <th>MÃ GT</th>
+                  <th>SỐ TIỀN</th>
+                  <th>ADMIN CỘNG</th>
+                  <th>ADMIN TRỪ</th>
+                  <th>ADMIN THƯỞNG</th>
+                  <th>TỔNG ĐẶT</th>
+                  <th>TỔNG WIN</th>
+                  <th>RÚT / NẠP</th>
+                  <th>THƯỞNG</th>
+                  <th>VIP HIỆN TẠI</th>
+                  <th>CẤP VIP</th>
+                  <th>XEM THÔNG TIN</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="member in filteredUsers" :key="member._id">
+                  <td>{{ member.userCode || '--' }}</td>
+                  <td>@{{ member.username }}</td>
+                  <td>{{ member.lastLoginIp || '--' }}</td>
+                  <td>{{ member.referredByCode || '--' }}</td>
+                  <td>{{ formatMoney(member.balance) }}</td>
+                  <td>{{ formatMoney(member.adminCreditTotal) }}</td>
+                  <td>{{ formatMoney(member.adminDebitTotal) }}</td>
+                  <td>{{ formatMoney(member.adminBonusTotal) }}</td>
+                  <td>{{ formatMoney(member.totalBetAmount) }}</td>
+                  <td>{{ formatMoney(member.totalWinAmount) }}</td>
+                  <td>
+                    <div class="cell-stack">
+                      <input v-model="getUserDraft(member._id).adjustAmount" class="inline-input inline-input--sm" type="number" min="1" placeholder="Số tiền" />
+                      <div class="action-btns action-btns--tight">
+                        <button class="btn btn--success btn--sm" :disabled="isUserRowSaving(member._id)" @click="adminAdjustBalance(member._id,'credit')">Nạp</button>
+                        <button class="btn btn--danger btn--sm" :disabled="isUserRowSaving(member._id)" @click="adminAdjustBalance(member._id,'debit')">Rút</button>
+                      </div>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="cell-stack">
+                      <input v-model="getUserDraft(member._id).bonusAmount" class="inline-input inline-input--sm" type="number" min="1" placeholder="Số tiền" />
+                      <button class="btn btn--primary btn--sm" :disabled="isUserRowSaving(member._id)" @click="adminAdjustBalance(member._id,'bonus')">Xác nhận</button>
+                    </div>
+                  </td>
+                  <td>VIP: {{ Number(member.vipLevel || 0) }}</td>
+                  <td>
+                    <div class="cell-stack">
+                      <input v-model="getUserDraft(member._id).vipLevel" class="inline-input inline-input--sm" type="number" min="0" placeholder="0" />
+                      <button class="btn btn--primary btn--sm" :disabled="isUserRowSaving(member._id)" @click="adminSetVip(member._id)">Xác nhận</button>
+                    </div>
+                  </td>
+                  <td>
+                    <div class="action-btns action-btns--tight">
+                      <button v-if="member.role !== 'admin' && member.status === 'active'" class="btn btn--danger btn--sm" @click="toggleUserStatus(member._id, 'locked')">Khóa</button>
+                      <button v-else-if="member.role !== 'admin'" class="btn btn--success btn--sm" @click="toggleUserStatus(member._id, 'active')">Mở</button>
+                      <button class="btn btn--primary btn--sm" @click="loadUserDetail(member._id)">Xem</button>
+                    </div>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
         </div>
         <div v-if="selectedUser" class="panel-card">
           <div class="panel-card__header"><h3>Chi tiết: {{ selectedUser.username }}</h3></div>
@@ -314,94 +353,71 @@
         </div>
       </div>
 
-      <!-- Odds Settings -->
+      <!-- ===== SET KÈO XÚC SẮC 3P ===== -->
       <div v-if="activeTab === 'odds-settings'" class="admin-panel">
-        <div class="panel-card">
-          <div class="panel-card__header">
-            <h3>Set kèo theo room</h3>
-            <div class="header-controls">
-              <select v-model="selectedOddsRoomId" class="select-input">
-                <option v-for="room in oddsRooms" :key="room.roomId" :value="room.roomId">{{ room.title }}</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="form-grid">
-            <label class="form-field"><span>Thời gian phiên (giây)</span><input v-model.number="oddsConfig.roundDuration" type="number" min="10" /></label>
-            <label class="form-field"><span>Khóa cược trước (giây)</span><input v-model.number="oddsConfig.betLockSeconds" type="number" min="1" /></label>
-            <label class="form-field"><span>Cược tối thiểu</span><input v-model.number="oddsConfig.minBet" type="number" min="1" /></label>
-            <label class="form-field"><span>Cược tối đa</span><input v-model.number="oddsConfig.maxBet" type="number" min="1" /></label>
-            <label class="form-field form-field--wide"><span>Chip options</span><input v-model="chipOptionsText" type="text" placeholder="1000, 5000, 10000" /></label>
-          </div>
-
-          <h4 class="section-subtitle">Tỉ lệ cược</h4>
-          <div class="odds-grid">
-            <label v-for="(value, gate) in oddsConfig.odds" :key="gate" class="form-field">
-              <span>{{ formatGateLabel(gate) }}</span>
-              <input v-model.number="oddsConfig.odds[gate]" type="number" step="0.01" min="0" />
-            </label>
-          </div>
-
-          <div class="action-btns action-btns--left" style="margin-top:16px">
-            <button class="btn btn--primary" :disabled="savingOdds" @click="saveOddsSettings">{{ savingOdds ? 'Đang lưu...' : 'Lưu set kèo' }}</button>
-            <button class="btn" :disabled="savingOdds" @click="resetOddsSettings">Khôi phục mặc định</button>
+        <!-- Header phiên -->
+        <div class="keo-hero">
+          <h2>🎲 Set kèo · Xúc sắc 3P</h2>
+          <div class="keo-hero__meta">
+            <span>Kỳ <strong>{{ sicboControl.roundId }}</strong></span>
+            <span class="keo-hero__timer">{{ formatCountdown(sicboControl.timeLeft) }}</span>
+            <span :class="sicboControl.bettingOpen ? 'keo-status--open' : 'keo-status--closed'">{{ sicboControl.bettingOpen ? 'Đang mở' : 'Khóa cược' }}</span>
           </div>
         </div>
 
-        <!-- Sicbo Control -->
+        <!-- Ép kết quả -->
+        <div class="keo-control">
+          <p class="keo-control__label">Kết quả hiện tại: <strong>{{ formatForcedResult(sicboControl.forcedResult) }}</strong></p>
+          <div class="keo-control__row">
+            <select v-model="forcedResultForm.d1" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`a1-${v}`" :value="String(v)">{{ v }}</option></select>
+            <select v-model="forcedResultForm.d2" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`a2-${v}`" :value="String(v)">{{ v }}</option></select>
+            <select v-model="forcedResultForm.d3" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`a3-${v}`" :value="String(v)">{{ v }}</option></select>
+            <button class="btn btn--primary" :disabled="savingControl" @click="saveSicboControl">Xác nhận</button>
+            <button class="btn" :disabled="savingControl" @click="clearSicboControl">Làm mới</button>
+          </div>
+        </div>
+
+        <!-- Bảng cược -->
         <div class="panel-card">
-          <div class="panel-card__header">
-            <h3>Chỉnh kết quả phiên mở</h3>
-            <span class="badge badge--warning">Phiên {{ sicboControl.roundId }} · {{ formatCountdown(sicboControl.timeLeft) }}</span>
-          </div>
-
-          <div class="detail-grid" style="margin-bottom:16px">
-            <div><span>Room</span><strong>{{ formatRoomLabel(sicboControl.roomId) }}</strong></div>
-            <div><span>Trạng thái</span><strong>{{ sicboControl.bettingOpen ? 'Đang mở cược' : 'Khóa cược' }}</strong></div>
-            <div><span>Tổng cược</span><strong>{{ formatMoney(sicboControl.betTotalAmount) }}</strong></div>
-            <div><span>Số lệnh</span><strong>{{ sicboControl.betCount }}</strong></div>
-            <div><span>Ép hiện tại</span><strong>{{ formatForcedResult(sicboControl.forcedResult) }}</strong></div>
-            <div><span>Kết quả gần nhất</span><strong>{{ sicboControl.summary ? formatForcedResult(sicboControl.summary.result) : '--' }}</strong></div>
-          </div>
-
-          <div class="form-grid">
-            <label class="form-field">
-              <span>Xúc xắc 1</span>
-              <select v-model="forcedResultForm.d1"><option value="">Ngẫu nhiên</option><option v-for="v in [1,2,3,4,5,6]" :key="`d1-${v}`" :value="String(v)">{{ v }}</option></select>
-            </label>
-            <label class="form-field">
-              <span>Xúc xắc 2</span>
-              <select v-model="forcedResultForm.d2"><option value="">Ngẫu nhiên</option><option v-for="v in [1,2,3,4,5,6]" :key="`d2-${v}`" :value="String(v)">{{ v }}</option></select>
-            </label>
-            <label class="form-field">
-              <span>Xúc xắc 3</span>
-              <select v-model="forcedResultForm.d3"><option value="">Ngẫu nhiên</option><option v-for="v in [1,2,3,4,5,6]" :key="`d3-${v}`" :value="String(v)">{{ v }}</option></select>
-            </label>
-            <label class="form-field form-field--wide"><span>Ghi chú</span><input v-model="forcedResultForm.forcedNote" type="text" placeholder="Ghi chú điều khiển" /></label>
-          </div>
-
-          <div class="action-btns action-btns--left" style="margin-top:12px">
-            <button class="btn btn--primary" :disabled="savingControl" @click="saveSicboControl">{{ savingControl ? 'Đang lưu...' : 'Áp kết quả' }}</button>
-            <button class="btn btn--danger" :disabled="savingControl" @click="clearSicboControl">Bỏ ép</button>
-          </div>
+          <div class="panel-card__header"><h3>Lệnh cược gần đây</h3></div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Username</th><th>Cửa</th><th>Số tiền</th><th>Thời gian</th></tr></thead>
+            <tbody>
+              <tr v-if="gameHistory.filter(b=>b.roomId==='sicbo-3p').length===0"><td colspan="5" class="panel-card__empty">Chưa có lệnh cược</td></tr>
+              <tr v-for="bet in gameHistory.filter(b=>b.roomId==='sicbo-3p').slice(0,15)" :key="bet._id">
+                <td>{{ bet.userId?.userCode || '--' }}</td>
+                <td>{{ bet.userId?.username || 'N/A' }}</td>
+                <td><strong>{{ formatGateLabel(bet.gate) }}</strong></td>
+                <td>{{ formatMoney(bet.amount) }}</td>
+                <td>{{ formatDate(bet.createdAt) }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
 
-      <!-- Payout Settings -->
+      <!-- Cài đặt hệ thống -->
       <div v-if="activeTab === 'payout-settings'" class="admin-panel">
         <div class="panel-card">
-          <div class="panel-card__header"><h3>Cài đặt trả thưởng</h3></div>
+          <h2 style="text-align:center;font-size:22px;font-weight:800;margin:0 0 24px">Cài đặt hệ thống</h2>
           <div class="form-grid">
-            <label class="form-field"><span>Phí rút (%)</span><input v-model.number="payoutConfig.withdrawFeeRate" type="number" min="0" step="0.01" /></label>
-            <label class="form-field"><span>Giới hạn rút/ngày</span><input v-model.number="payoutConfig.dailyWithdrawLimit" type="number" min="0" /></label>
-            <label class="form-field"><span>Số lệnh chờ tối đa</span><input v-model.number="payoutConfig.maxPendingWithdrawals" type="number" min="1" /></label>
+            <label class="form-field"><span>Đôi bên</span><input v-model="siteConfig.oddsDoi" type="text" /></label>
+            <label class="form-field"><span>Xúc sắc 3p</span><input v-model="siteConfig.oddsXs3p" type="text" /></label>
+            <label class="form-field"><span>Hai số trùng Xúc sắc 3p</span><input v-model="siteConfig.oddsHaiTrung3p" type="text" /></label>
+            <label class="form-field"><span>Ba số trùng Xúc sắc 3p</span><input v-model="siteConfig.oddsBaTrung3p" type="text" /></label>
+            <label class="form-field"><span style="color:#e53935">Lỗi CLTX Xúc sắc 3p</span><input v-model="siteConfig.oddsLoiCltx3p" type="text" /></label>
+            <label class="form-field"><span>Xúc sắc 5p</span><input v-model="siteConfig.oddsXs5p" type="text" /></label>
+            <label class="form-field"><span>Hai số trùng Xúc sắc 5p</span><input v-model="siteConfig.oddsHaiTrung5p" type="text" /></label>
+            <label class="form-field"><span>Ba số trùng Xúc sắc 5p</span><input v-model="siteConfig.oddsBaTrung5p" type="text" /></label>
+            <label class="form-field"><span style="color:#e53935">Lỗi CLTX Xúc sắc 5p</span><input v-model="siteConfig.oddsLoiCltx5p" type="text" /></label>
+            <label class="form-field"><span style="color:#4caf50">Lỗi Keno Xúc sắc 5p</span><input v-model="siteConfig.oddsLoiKeno5p" type="text" /></label>
+            <label class="form-field"><span>Mã giới thiệu</span><input v-model="siteConfig.referralCode" type="text" placeholder="VD: HT5555" /></label>
+            <label class="form-field"><span>SEO - Tiêu Đề</span><input v-model="siteConfig.seoTitle" type="text" /></label>
+            <label class="form-field"><span>SEO - Mô tả</span><input v-model="siteConfig.seoDescription" type="text" /></label>
+            <label class="form-field"><span>Thông báo trang chủ (ngăn cách bằng dấu ';')</span><input v-model="siteConfig.homeBanner" type="text" placeholder="CHÀO MỪNG BẠN ĐẾN THE VENETIAN !" /></label>
           </div>
-          <div class="toggle-row">
-            <label class="toggle-item"><input v-model="payoutConfig.autoApproveDeposit" type="checkbox" /><span>Tự duyệt nạp tiền</span></label>
-            <label class="toggle-item"><input v-model="payoutConfig.autoApproveWithdraw" type="checkbox" /><span>Tự duyệt rút tiền</span></label>
-          </div>
-          <div class="action-btns action-btns--left" style="margin-top:16px">
-            <button class="btn btn--primary" :disabled="savingPayout" @click="savePayoutSettings">{{ savingPayout ? 'Đang lưu...' : 'Lưu cài đặt' }}</button>
+          <div style="text-align:center;margin-top:20px">
+            <button class="btn btn--primary" :disabled="savingSiteConfig" @click="saveSiteConfig">{{ savingSiteConfig ? 'Đang lưu...' : 'Lưu' }}</button>
           </div>
         </div>
       </div>
@@ -449,7 +465,7 @@
       <!-- Chat -->
       <div v-if="activeTab === 'chat'" class="admin-panel">
         <div class="panel-card">
-          <div class="panel-card__header"><h3>Chat / CSKH</h3></div>
+          <div class="panel-card__header"><h3>Chat / CSKH (Realtime)</h3></div>
           <div class="admin-chat-layout">
             <div class="admin-chat-rooms">
               <button v-for="room in chatRooms" :key="room.roomId" class="admin-chat-room" :class="{ 'admin-chat-room--active': selectedRoomId === room.roomId }" @click="selectedRoomId = room.roomId">
@@ -457,14 +473,18 @@
                 <span>{{ room.lastMessage }}</span>
               </button>
             </div>
-            <div class="admin-chat-messages">
+            <div class="admin-chat-messages" ref="adminChatRef">
               <div v-if="chatMessages.length === 0" class="panel-card__empty">Chọn phòng để xem tin nhắn.</div>
-              <div v-for="msg in chatMessages" :key="msg.id" class="admin-chat-msg">
-                <strong>{{ msg.sender }}</strong>
+              <div v-for="msg in chatMessages" :key="msg._id" class="admin-chat-msg" :class="{ 'admin-chat-msg--admin': msg.senderRole === 'admin' }">
+                <strong>{{ msg.senderName || msg.sender }} <span v-if="msg.senderRole === 'admin'" class="badge badge--info">Admin</span></strong>
                 <p>{{ msg.content }}</p>
                 <small>{{ formatDate(msg.createdAt) }}</small>
               </div>
             </div>
+          </div>
+          <div class="admin-chat-input">
+            <input v-model.trim="adminChatInput" type="text" placeholder="Trả lời..." @keyup.enter="sendAdminChat" />
+            <button class="btn btn--primary" :disabled="sendingAdminChat" @click="sendAdminChat">Gửi</button>
           </div>
         </div>
       </div>
@@ -492,36 +512,240 @@
         </div>
       </div>
 
+      <!-- Set Kèo 1/3/5 (Keno placeholders) -->
+      <div v-if="activeTab === 'set-keo-1' || activeTab === 'set-keo-3' || activeTab === 'set-keo-5'" class="admin-panel">
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Set kèo</h3></div>
+          <p style="text-align:center;padding:14px 0;font-size:15px;font-weight:700">Kỳ {{ kenoRoundLabel }}</p>
+          <p style="text-align:center;color:#888;font-size:14px">{{ formatCountdown(sicboControl.timeLeft) }}</p>
+          <table class="data-table" style="margin-top:16px">
+            <thead><tr><th>ID USER</th><th>USERNAME</th><th>CHỌN</th><th>SỐ TIỀN</th><th>THỜI GIAN ĐẶT</th></tr></thead>
+            <tbody>
+              <tr><td colspan="5" style="text-align:center;color:#999;padding:20px">Chưa có dữ liệu cược Keno</td></tr>
+            </tbody>
+          </table>
+          <div style="text-align:center;padding:20px 0">
+            <p style="font-size:14px;color:#555">Kết quả kèo hiện tại là <strong>{{ formatForcedResult(sicboControl.forcedResult) }}</strong></p>
+            <p style="margin-top:8px;font-size:14px;color:#555">Chọn kèo</p>
+            <div style="display:flex;gap:8px;justify-content:center;margin-top:8px">
+              <input v-model="kenoForceInput" type="text" class="inline-input" style="width:120px" placeholder="Nhập kèo" />
+              <button class="btn btn--primary btn--sm">Xác nhận</button>
+              <button class="btn btn--sm">Làm mới</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ===== SET KÈO XÚC SẮC 5P ===== -->
+      <div v-if="activeTab === 'odds-5p'" class="admin-panel">
+        <div class="keo-hero keo-hero--5p">
+          <h2>🎲 Set kèo · Xúc sắc 5P</h2>
+          <div class="keo-hero__meta">
+            <span>Kỳ <strong>{{ sicbo5pControl.roundId || '--' }}</strong></span>
+            <span class="keo-hero__timer">{{ formatCountdown(sicbo5pControl.timeLeft) }}</span>
+            <span :class="sicbo5pControl.bettingOpen ? 'keo-status--open' : 'keo-status--closed'">{{ sicbo5pControl.bettingOpen ? 'Đang mở' : 'Khóa cược' }}</span>
+          </div>
+        </div>
+
+        <div class="keo-control">
+          <p class="keo-control__label">Kết quả hiện tại: <strong>{{ formatForcedResult(sicbo5pControl.forcedResult) }}</strong></p>
+          <div class="keo-control__row">
+            <select v-model="forced5p.d1" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`b1-${v}`" :value="String(v)">{{ v }}</option></select>
+            <select v-model="forced5p.d2" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`b2-${v}`" :value="String(v)">{{ v }}</option></select>
+            <select v-model="forced5p.d3" class="keo-select"><option value="">-</option><option v-for="v in [1,2,3,4,5,6]" :key="`b3-${v}`" :value="String(v)">{{ v }}</option></select>
+            <button class="btn btn--primary" @click="saveSicbo5pControl">Xác nhận</button>
+            <button class="btn" @click="forced5p.d1='';forced5p.d2='';forced5p.d3=''">Làm mới</button>
+          </div>
+        </div>
+
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Lệnh cược gần đây</h3></div>
+          <table class="data-table">
+            <thead><tr><th>ID</th><th>Username</th><th>Cửa</th><th>Số tiền</th><th>Thời gian</th></tr></thead>
+            <tbody>
+              <tr v-if="gameHistory.filter(b=>b.roomId==='sicbo-5p').length===0"><td colspan="5" class="panel-card__empty">Chưa có lệnh cược</td></tr>
+              <tr v-for="bet in gameHistory.filter(b=>b.roomId==='sicbo-5p').slice(0,15)" :key="bet._id">
+                <td>{{ bet.userId?.userCode || '--' }}</td>
+                <td>{{ bet.userId?.username || 'N/A' }}</td>
+                <td><strong>{{ formatGateLabel(bet.gate) }}</strong></td>
+                <td>{{ formatMoney(bet.amount) }}</td>
+                <td>{{ formatDate(bet.createdAt) }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Yêu cầu rút tiền -->
+      <div v-if="activeTab === 'withdraw-requests'" class="admin-panel">
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Yêu cầu rút tiền</h3><span class="badge">{{ withdrawRequests.length }}</span></div>
+          <div v-if="withdrawRequests.length === 0" class="panel-card__empty">Không có yêu cầu rút tiền.</div>
+          <table v-else class="data-table">
+            <thead><tr><th>User</th><th>Số tiền</th><th>Ngân hàng</th><th>STK</th><th>Trạng thái</th><th>Thời gian</th><th>Hành động</th></tr></thead>
+            <tbody>
+              <tr v-for="tx in withdrawRequests" :key="tx._id">
+                <td>{{ tx.userId?.username || 'N/A' }}</td>
+                <td class="text-bold">{{ formatMoney(Math.abs(tx.amount)) }}</td>
+                <td>{{ tx.meta?.bankName || '--' }}</td>
+                <td>{{ tx.meta?.bankAccount || '--' }}</td>
+                <td><span class="badge" :class="tx.status==='pending'?'badge--warning':'badge--info'">{{ tx.status }}</span></td>
+                <td>{{ formatDate(tx.createdAt) }}</td>
+                <td>
+                  <div v-if="tx.status==='pending'" class="action-btns">
+                    <button class="btn btn--success btn--sm" @click="reviewTransaction(tx._id,'approve')">Duyệt</button>
+                    <button class="btn btn--danger btn--sm" @click="reviewTransaction(tx._id,'reject')">Từ chối</button>
+                  </div>
+                  <span v-else style="color:#888;font-size:12px">Đã xử lý</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Yêu cầu nạp tiền -->
+      <div v-if="activeTab === 'deposit-requests'" class="admin-panel">
+        <div class="panel-card">
+          <div class="panel-card__header"><h3>Yêu cầu nạp tiền</h3><span class="badge">{{ depositRequests.length }}</span></div>
+          <div v-if="depositRequests.length === 0" class="panel-card__empty">Không có yêu cầu nạp tiền.</div>
+          <table v-else class="data-table">
+            <thead><tr><th>User</th><th>Số tiền</th><th>Ngân hàng</th><th>Nội dung CK</th><th>Trạng thái</th><th>Thời gian</th><th>Hành động</th></tr></thead>
+            <tbody>
+              <tr v-for="tx in depositRequests" :key="tx._id">
+                <td>{{ tx.userId?.username || 'N/A' }}</td>
+                <td class="text-bold">{{ formatMoney(tx.amount) }}</td>
+                <td>{{ tx.meta?.bankCode || '--' }}</td>
+                <td>{{ tx.meta?.transferContent || '--' }}</td>
+                <td><span class="badge" :class="tx.status==='pending'?'badge--warning':'badge--info'">{{ tx.status }}</span></td>
+                <td>{{ formatDate(tx.createdAt) }}</td>
+                <td>
+                  <div v-if="tx.status==='pending'" class="action-btns">
+                    <button class="btn btn--success btn--sm" @click="reviewTransaction(tx._id,'approve')">Duyệt</button>
+                    <button class="btn btn--danger btn--sm" @click="reviewTransaction(tx._id,'reject')">Từ chối</button>
+                  </div>
+                  <span v-else style="color:#888;font-size:12px">Đã xử lý</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Thêm mới nhân viên -->
+      <div v-if="activeTab === 'add-staff'" class="admin-panel">
+        <div class="panel-card" style="max-width:500px;margin:0 auto">
+          <h2 style="text-align:center;font-size:22px;font-weight:800;margin:0 0 24px">Tạo tài khoản nhân viên</h2>
+          <div style="display:flex;flex-direction:column;gap:16px;align-items:center">
+            <label class="form-field" style="width:100%;max-width:340px;text-align:center">
+              <span style="display:block;margin-bottom:6px;font-weight:600">Tài khoản</span>
+              <input v-model="newAdminForm.username" type="text" style="text-align:center" />
+            </label>
+            <label class="form-field" style="width:100%;max-width:340px;text-align:center">
+              <span style="display:block;margin-bottom:6px;font-weight:600">Mật khẩu</span>
+              <input v-model="newAdminForm.password" type="password" style="text-align:center" />
+            </label>
+            <button class="btn btn--primary" style="margin-top:8px;min-width:140px" :disabled="savingAdminForm" @click="createAdminUser">
+              {{ savingAdminForm ? 'Đang tạo...' : 'Xác nhận' }}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tài khoản ngân hàng (Admin) -->
+      <div v-if="activeTab === 'bank-accounts'" class="admin-panel">
+        <div class="panel-card" style="max-width:600px;margin:0 auto">
+          <h2 style="text-align:center;font-size:22px;font-weight:800;margin:0 0 24px">Cài đặt ngân hàng</h2>
+          <div style="display:flex;flex-direction:column;gap:14px;align-items:center">
+            <label class="form-field" style="width:100%;max-width:400px">
+              <span style="display:block;text-align:center;margin-bottom:4px;font-weight:600">Tên người nhận</span>
+              <input v-model="adminBankForm.accountName" type="text" style="text-align:center" />
+            </label>
+            <label class="form-field" style="width:100%;max-width:400px">
+              <span style="display:block;text-align:center;margin-bottom:4px;font-weight:600">Tên ngân hàng</span>
+              <input v-model="adminBankForm.bankName" type="text" style="text-align:center" />
+            </label>
+            <label class="form-field" style="width:100%;max-width:400px">
+              <span style="display:block;text-align:center;margin-bottom:4px;font-weight:600">STK</span>
+              <input v-model="adminBankForm.bankAccount" type="text" style="text-align:center" />
+            </label>
+            <label class="form-field" style="width:100%;max-width:400px">
+              <span style="display:block;text-align:center;margin-bottom:4px;font-weight:600">Nội dung chuyển khoản</span>
+              <input v-model="adminBankForm.transferNote" type="text" style="text-align:center" />
+            </label>
+            <button class="btn btn--primary" style="margin-top:4px;min-width:120px" :disabled="savingAdminBank" @click="saveAdminBank">
+              {{ savingAdminBank ? 'Đang lưu...' : 'Lưu' }}
+            </button>
+          </div>
+        </div>
+
+        <div class="panel-card" style="margin-top:20px">
+          <table class="data-table">
+            <thead><tr><th>TÊN NGÂN HÀNG</th><th>STK</th><th>NGƯỜI NHẬN</th><th>NỘI DUNG CHUYỂN KHOẢN</th><th>HÀNH ĐỘNG</th></tr></thead>
+            <tbody>
+              <tr v-if="adminBanks.length === 0"><td colspan="5" style="text-align:center;color:#999;padding:20px">Chưa có tài khoản ngân hàng</td></tr>
+              <tr v-for="b in adminBanks" :key="b._id">
+                <td>{{ b.bankName }}</td>
+                <td>{{ b.bankAccount }}</td>
+                <td>{{ b.accountName }}</td>
+                <td>{{ b.transferNote || '--' }}</td>
+                <td><button class="btn btn--danger btn--sm" @click="deleteAdminBank(b._id)">Xóa</button></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
       <!-- Error -->
       <div v-if="loadError" class="error-banner">{{ loadError }}</div>
+      <div
+        v-if="toast.message"
+        class="admin-toast"
+        :class="toast.type === 'error' ? 'admin-toast--error' : 'admin-toast--success'"
+        role="status"
+        aria-live="polite"
+      >
+        <span>{{ toast.message }}</span>
+        <button class="admin-toast__close" type="button" @click="clearToast">×</button>
+      </div>
+
+      <!-- Footer -->
+      <footer class="admin-footer">
+        Designed & Developed by <strong>BG Production</strong>
+      </footer>
     </div>
   </section>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { apiFetch } from '@/lib/api'
 import { useUserStore } from '@/stores/user'
+import { useSocketStore } from '@/stores/socket'
 
 const router = useRouter()
 const userStore = useUserStore()
+const socketStore = useSocketStore()
 
 const sidebarOpen = ref(false)
 
 const tabs = [
-  { key: 'dashboard', label: 'Dashboard', icon: '📊' },
-  { key: 'game-summary', label: 'Tổng quan game', icon: '🎲' },
-  { key: 'users', label: 'Người chơi', icon: '👥' },
-  { key: 'transactions', label: 'Nạp / Rút', icon: '💳' },
-  { key: 'game-history', label: 'Lịch sử game', icon: '📜' },
-  { key: 'revenue', label: 'Doanh thu', icon: '💰' },
-  { key: 'invite-codes', label: 'Mã mời', icon: '🎟️' },
-  { key: 'odds-settings', label: 'Cài đặt kèo', icon: '⚙️' },
-  { key: 'payout-settings', label: 'Trả thưởng', icon: '🏦' },
-  { key: 'admins', label: 'Quản trị viên', icon: '🔑' },
-  { key: 'chat', label: 'Chat', icon: '💬' },
-  { key: 'chat-mobile', label: 'Chat Mobile', icon: '📱' }
+  { key: 'dashboard', label: 'Doanh Thu', icon: '📊' },
+  { key: 'users', label: 'Người chơi', icon: '👤' },
+  { key: 'admins', label: 'Quản lý nhân viên', icon: '👥' },
+  { key: 'set-keo-1', label: 'Set Kèo 1', icon: '🎰' },
+  { key: 'set-keo-3', label: 'Set Kèo 3', icon: '🎰' },
+  { key: 'set-keo-5', label: 'Set Kèo 5', icon: '🎰' },
+  { key: 'odds-settings', label: 'Set Kèo Xúc sắc 3p', icon: '🎲' },
+  { key: 'odds-5p', label: 'Set Kèo Xúc sắc 5p', icon: '🎲' },
+  { key: 'withdraw-requests', label: 'Yêu cầu rút tiền', icon: '💸' },
+  { key: 'deposit-requests', label: 'Yêu cầu nạp tiền', icon: '💰' },
+  { key: 'game-history', label: 'Lịch sử trò chơi', icon: '📜' },
+  { key: 'payout-settings', label: 'Cài đặt', icon: '⚙️' },
+  { key: 'add-staff', label: 'Thêm mới nhân viên', icon: '➕' },
+  { key: 'bank-accounts', label: 'Tài khoản ngân hàng', icon: '🏦' },
+  { key: 'chat', label: 'Chat CSKH', icon: '💬' }
 ]
 
 const loadingAll = ref(false)
@@ -538,11 +762,30 @@ const savingPayout = ref(false)
 const savingAdminForm = ref(false)
 const chipOptionsText = ref('')
 const inviteSearchKeyword = ref('')
+const userSearchKeyword = ref('')
 const inviteSavingState = reactive({})
 const adminActionSavingState = reactive({})
 const adminPasswordDrafts = reactive({})
+const userRowSavingState = reactive({})
+const userRowDrafts = reactive({})
 const forcedResultForm = reactive({ d1: '', d2: '', d3: '', forcedNote: '' })
 const newAdminForm = reactive({ username: '', password: '', fullName: '', phone: '' })
+
+const toast = reactive({ message: '', type: 'success' })
+let toastTimer = null
+function showToast(message, type = 'success') {
+  toast.message = String(message || '').trim()
+  toast.type = type === 'error' ? 'error' : 'success'
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = setTimeout(() => {
+    toast.message = ''
+  }, 2200)
+}
+function clearToast() {
+  toast.message = ''
+  if (toastTimer) clearTimeout(toastTimer)
+  toastTimer = null
+}
 
 const overview = reactive({
   stats: { totalUsers: 0, activeUsers: 0, pendingTransactions: 0 },
@@ -580,10 +823,130 @@ const oddsRooms = ref([])
 const adminUsers = ref([])
 const chatRooms = ref([])
 const chatMessages = ref([])
+const adminChatRef = ref(null)
+const adminChatInput = ref('')
+const sendingAdminChat = ref(false)
+const kenoForceInput = ref('')
+const kenoRoundLabel = computed(() => Math.floor(Date.now() / 60000))
+const currentBets5p = ref([])
+const forced5p = reactive({ d1: '', d2: '', d3: '' })
+const sicbo5pControl = reactive({ roomId:'sicbo-5p', roundId:'--', timeLeft:0, bettingOpen:false, forcedResult:null })
+
+function applySicboRealtimeState(state) {
+  if (!state || !state.roomId) return
+
+  if (state.roomId === 'sicbo-3p') {
+    if (state.roundId) sicboControl.roundId = state.roundId
+    if (typeof state.timeLeft !== 'undefined') sicboControl.timeLeft = Number(state.timeLeft || 0)
+    if (typeof state.bettingOpen !== 'undefined') sicboControl.bettingOpen = Boolean(state.bettingOpen)
+    if (typeof state.betTotalAmount !== 'undefined') sicboControl.betTotalAmount = Number(state.betTotalAmount || 0)
+    if (typeof state.betCount !== 'undefined') sicboControl.betCount = Number(state.betCount || 0)
+    if (typeof state.summary !== 'undefined') sicboControl.summary = state.summary || null
+    return
+  }
+
+  if (state.roomId === 'sicbo-5p') {
+    if (state.roundId) sicbo5pControl.roundId = state.roundId
+    if (typeof state.timeLeft !== 'undefined') sicbo5pControl.timeLeft = Number(state.timeLeft || 0)
+    if (typeof state.bettingOpen !== 'undefined') sicbo5pControl.bettingOpen = Boolean(state.bettingOpen)
+  }
+}
+
+function ensureSicboRealtimeForTab(tabKey) {
+  if (tabKey === 'odds-settings') {
+    socketStore.joinSicboRoom(userStore.user?._id, 'sicbo-3p')
+    return
+  }
+
+  if (tabKey === 'odds-5p') {
+    socketStore.joinSicboRoom(userStore.user?._id, 'sicbo-5p')
+  }
+}
+
+const lastSeenBetCountByRoom = reactive({
+  'sicbo-3p': null,
+  'sicbo-5p': null
+})
+let lastGameHistoryRefreshAt = 0
+
+function shouldRefreshBetsForActiveTab(roomId) {
+  if (roomId === 'sicbo-3p' && activeTab.value === 'odds-settings') return true
+  if (roomId === 'sicbo-5p' && activeTab.value === 'odds-5p') return true
+  return false
+}
+
+async function maybeRefreshGameHistoryFromRealtime(state) {
+  const roomId = state?.roomId
+  if (!roomId || !shouldRefreshBetsForActiveTab(roomId)) return
+
+  const betCount = Number.isFinite(Number(state.betCount)) ? Number(state.betCount) : null
+  if (betCount === null) return
+
+  const lastSeen = lastSeenBetCountByRoom[roomId]
+  if (lastSeen !== null && betCount === lastSeen) return
+
+  lastSeenBetCountByRoom[roomId] = betCount
+
+  // Throttle to avoid hammering the admin endpoint during high traffic.
+  const now = Date.now()
+  if (now - lastGameHistoryRefreshAt < 2500) return
+  lastGameHistoryRefreshAt = now
+
+  try {
+    await loadGameHistory()
+  } catch {
+    /* ignore */
+  }
+}
+
+const siteConfig = reactive({
+  oddsDoi:'1.99', oddsXs3p:'1.99', oddsHaiTrung3p:'1.99', oddsBaTrung3p:'1.99', oddsLoiCltx3p:'1.99',
+  oddsXs5p:'1.99', oddsHaiTrung5p:'1.99', oddsBaTrung5p:'1.99', oddsLoiCltx5p:'1.98', oddsLoiKeno5p:'2.3',
+  referralCode:'', seoTitle:'', seoDescription:'', homeBanner:'CHÀO MỪNG BẠN ĐẾN THE VENETIAN !'
+})
+const savingSiteConfig = ref(false)
+const adminBankForm = reactive({ accountName:'', bankName:'', bankAccount:'', transferNote:'' })
+const adminBanks = ref([])
+const savingAdminBank = ref(false)
+
+const withdrawRequests = computed(() => transactions.value.filter(t => ['withdraw_pending','withdraw','withdraw_rejected'].includes(t.type)))
+const depositRequests = computed(() => transactions.value.filter(t => ['deposit_pending','deposit','deposit_rejected'].includes(t.type)))
+const usersWithBank = computed(() => users.value.filter(u => u.linkedBank?.bankName))
 const mobileChatRooms = ref([])
 const mobileChatMessages = ref([])
 
 const currentTabLabel = computed(() => tabs.find(t => t.key === activeTab.value)?.label || 'Dashboard')
+
+const filteredUsers = computed(() => {
+  const kw = String(userSearchKeyword.value || '').trim().toLowerCase()
+  if (!kw) return users.value || []
+  return (users.value || []).filter((u) => {
+    const hay = [
+      u.userCode,
+      u.username,
+      u.phone,
+      u.lastLoginIp,
+      u.referredByCode,
+      u.inviteCode
+    ]
+      .map((v) => String(v || '').toLowerCase())
+      .join(' ')
+    return hay.includes(kw)
+  })
+})
+
+function getUserDraft(userId) {
+  const key = String(userId || '')
+  if (!key) return { adjustAmount: '', bonusAmount: '', vipLevel: '' }
+  if (!userRowDrafts[key]) {
+    userRowDrafts[key] = { adjustAmount: '', bonusAmount: '', vipLevel: '' }
+  }
+  return userRowDrafts[key]
+}
+
+function isUserRowSaving(userId) {
+  return Boolean(userRowSavingState[String(userId || '')])
+}
 
 const filteredInviteCodes = computed(() => {
   const kw = String(inviteSearchKeyword.value || '').trim().toLowerCase()
@@ -602,7 +965,7 @@ function formatMoney(v) { return new Intl.NumberFormat('vi-VN').format(Number(v 
 function formatDate(v) { return v ? new Date(v).toLocaleString('vi-VN') : '--' }
 function formatCountdown(v) { const s = Math.max(Number(v||0),0); return `${String(Math.floor(s/60)).padStart(2,'0')}:${String(s%60).padStart(2,'0')}` }
 function formatTransactionType(type) {
-  const m = { deposit_pending:'Yêu cầu nạp', deposit:'Nạp thành công', deposit_rejected:'Từ chối nạp', withdraw_pending:'Yêu cầu rút', withdraw:'Rút thành công', withdraw_rejected:'Từ chối rút', bet:'Đặt cược', win:'Trả thưởng' }
+  const m = { deposit_pending:'Yêu cầu nạp', deposit:'Nạp thành công', deposit_rejected:'Từ chối nạp', withdraw_pending:'Yêu cầu rút', withdraw:'Rút thành công', withdraw_rejected:'Từ chối rút', bet:'Đặt cược', win:'Trả thưởng', refund:'Hoàn cược', admin_credit:'Admin cộng', admin_debit:'Admin trừ', admin_bonus:'Admin thưởng' }
   return m[type] || type || 'Giao dịch'
 }
 function formatGateLabel(g) {
@@ -668,12 +1031,14 @@ async function saveInviteCode(item) {
   if(!item?.userId)return; inviteSavingState[item.userId]=true
   try { loadError.value=''; const d=await apiFetch(`/api/admin/invite-codes/${item.userId}`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({inviteCode:String(item.inviteCodeDraft||'').trim()})})
     const u=d.item||{}; inviteCodes.value=inviteCodes.value.map(e=>e.userId===item.userId?{...e,...u,inviteCodeDraft:u.inviteCode||e.inviteCodeDraft||''}:e)
+    showToast('Đã lưu mã mời')
   } catch(e){loadError.value=e.message||'Error'} finally{inviteSavingState[item.userId]=false}
 }
 async function regenerateInviteCode(item) {
   if(!item?.userId)return; inviteSavingState[item.userId]=true
   try { loadError.value=''; const d=await apiFetch(`/api/admin/invite-codes/${item.userId}/regenerate`,{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify({})})
     const u=d.item||{}; inviteCodes.value=inviteCodes.value.map(e=>e.userId===item.userId?{...e,...u,inviteCodeDraft:u.inviteCode||e.inviteCodeDraft||''}:e)
+    showToast('Đã tạo mã mời mới')
   } catch(e){loadError.value=e.message||'Error'} finally{inviteSavingState[item.userId]=false}
 }
 async function loadOddsSettings(roomId=selectedOddsRoomId.value) {
@@ -682,21 +1047,21 @@ async function loadOddsSettings(roomId=selectedOddsRoomId.value) {
   applyOddsConfig(d.config||{})
 }
 async function saveOddsSettings() {
-  savingOdds.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/odds-settings?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify(buildOddsPayload())}); applyOddsConfig(d.config||{})}catch(e){loadError.value=e.message||'Error'}finally{savingOdds.value=false}
+  savingOdds.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/odds-settings?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify(buildOddsPayload())}); applyOddsConfig(d.config||{}); showToast('Đã lưu cấu hình kèo')}catch(e){loadError.value=e.message||'Error'}finally{savingOdds.value=false}
 }
 async function resetOddsSettings() {
-  savingOdds.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/odds-settings/reset?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify({})}); applyOddsConfig(d.config||{})}catch(e){loadError.value=e.message||'Error'}finally{savingOdds.value=false}
+  savingOdds.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/odds-settings/reset?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify({})}); applyOddsConfig(d.config||{}); showToast('Đã reset cấu hình kèo')}catch(e){loadError.value=e.message||'Error'}finally{savingOdds.value=false}
 }
 async function loadSicboControl(roomId=selectedOddsRoomId.value) {
   const d=await apiFetch(`/api/admin/sicbo-control?roomId=${encodeURIComponent(roomId)}`,{headers:userStore.authHeaders}); applySicboControl(d.state||{})
 }
 async function saveSicboControl() {
-  savingControl.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/sicbo-control?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({forcedResult:buildForcedResultPayload(),forcedNote:forcedResultForm.forcedNote})}); applySicboControl(d.state||{})}catch(e){loadError.value=e.message||'Error'}finally{savingControl.value=false}
+  savingControl.value=true; try{loadError.value='';const d=await apiFetch(`/api/admin/sicbo-control?roomId=${encodeURIComponent(selectedOddsRoomId.value)}`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({forcedResult:buildForcedResultPayload(),forcedNote:forcedResultForm.forcedNote})}); applySicboControl(d.state||{}); showToast(`Đã lưu kèo ${formatRoomLabel(selectedOddsRoomId.value)}`)}catch(e){loadError.value=e.message||'Error'}finally{savingControl.value=false}
 }
 async function clearSicboControl() { forcedResultForm.d1='';forcedResultForm.d2='';forcedResultForm.d3='';forcedResultForm.forcedNote=''; await saveSicboControl() }
 async function loadPayoutSettings() { const d=await apiFetch('/api/admin/payout-settings',{headers:userStore.authHeaders}); applyPayoutConfig(d.config||{}) }
 async function savePayoutSettings() {
-  savingPayout.value=true; try{loadError.value='';const d=await apiFetch('/api/admin/payout-settings',{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({withdrawFeeRate:Number(payoutConfig.withdrawFeeRate||0),dailyWithdrawLimit:Number(payoutConfig.dailyWithdrawLimit||0),maxPendingWithdrawals:Number(payoutConfig.maxPendingWithdrawals||1),autoApproveDeposit:Boolean(payoutConfig.autoApproveDeposit),autoApproveWithdraw:Boolean(payoutConfig.autoApproveWithdraw)})}); applyPayoutConfig(d.config||{})}catch(e){loadError.value=e.message||'Error'}finally{savingPayout.value=false}
+  savingPayout.value=true; try{loadError.value='';const d=await apiFetch('/api/admin/payout-settings',{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({withdrawFeeRate:Number(payoutConfig.withdrawFeeRate||0),dailyWithdrawLimit:Number(payoutConfig.dailyWithdrawLimit||0),maxPendingWithdrawals:Number(payoutConfig.maxPendingWithdrawals||1),autoApproveDeposit:Boolean(payoutConfig.autoApproveDeposit),autoApproveWithdraw:Boolean(payoutConfig.autoApproveWithdraw)})}); applyPayoutConfig(d.config||{}); showToast('Đã lưu cài đặt')}catch(e){loadError.value=e.message||'Error'}finally{savingPayout.value=false}
 }
 async function loadAdmins() {
   const d=await apiFetch('/api/admin/admins',{headers:userStore.authHeaders}); adminUsers.value=d.items||[]
@@ -705,18 +1070,88 @@ async function loadAdmins() {
 async function createAdminUser() {
   savingAdminForm.value=true; try{loadError.value='';await apiFetch('/api/admin/admins',{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify({username:newAdminForm.username,password:newAdminForm.password,fullName:newAdminForm.fullName,phone:newAdminForm.phone})})
     newAdminForm.username='';newAdminForm.password='';newAdminForm.fullName='';newAdminForm.phone=''; await loadAdmins()
+    showToast('Đã tạo admin')
   }catch(e){loadError.value=e.message||'Error'}finally{savingAdminForm.value=false}
 }
 async function toggleAdminStatus(admin,status) {
   if(!admin?._id)return; adminActionSavingState[admin._id]=true
-  try{loadError.value='';await apiFetch(`/api/admin/admins/${admin._id}/status`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({status})}); await loadAdmins()}catch(e){loadError.value=e.message||'Error'}finally{adminActionSavingState[admin._id]=false}
+  try{loadError.value='';await apiFetch(`/api/admin/admins/${admin._id}/status`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({status})}); await loadAdmins(); showToast('Đã cập nhật trạng thái')}catch(e){loadError.value=e.message||'Error'}finally{adminActionSavingState[admin._id]=false}
 }
 async function resetAdminPassword(admin) {
   if(!admin?._id)return; const pw=String(adminPasswordDrafts[admin._id]||''); if(pw.length<6){loadError.value='Mật khẩu tối thiểu 6 ký tự';return}
   adminActionSavingState[admin._id]=true
-  try{loadError.value='';await apiFetch(`/api/admin/admins/${admin._id}/password`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({password:pw})}); adminPasswordDrafts[admin._id]=''}catch(e){loadError.value=e.message||'Error'}finally{adminActionSavingState[admin._id]=false}
+  try{loadError.value='';await apiFetch(`/api/admin/admins/${admin._id}/password`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({password:pw})}); adminPasswordDrafts[admin._id]=''; showToast('Đã cập nhật mật khẩu')}catch(e){loadError.value=e.message||'Error'}finally{adminActionSavingState[admin._id]=false}
 }
 async function loadChatRooms() { const d=await apiFetch('/api/admin/chat/rooms',{headers:userStore.authHeaders}); chatRooms.value=d.items||[]; if(!selectedRoomId.value&&chatRooms.value.length)selectedRoomId.value=chatRooms.value[0].roomId }
+
+async function loadSiteConfig() {
+  try { const d=await apiFetch('/api/admin/site-config',{headers:userStore.authHeaders}); Object.assign(siteConfig,d.config||{}) } catch { /* ignore */ }
+}
+async function saveSiteConfig() {
+  savingSiteConfig.value=true
+  try { const d=await apiFetch('/api/admin/site-config',{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify(siteConfig)}); Object.assign(siteConfig,d.config||{}); showToast('Đã lưu cấu hình website') } catch(e){loadError.value=e.message||'Error'}
+  finally{savingSiteConfig.value=false}
+}
+async function loadAdminBanks() {
+  try { const d=await apiFetch('/api/admin/bank-accounts',{headers:userStore.authHeaders}); adminBanks.value=d.items||[] } catch { /* ignore */ }
+}
+async function saveAdminBank() {
+  if(!adminBankForm.accountName||!adminBankForm.bankName||!adminBankForm.bankAccount){loadError.value='Vui lòng nhập đầy đủ';return}
+  savingAdminBank.value=true
+  try{await apiFetch('/api/admin/bank-accounts',{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify(adminBankForm)})
+    adminBankForm.accountName='';adminBankForm.bankName='';adminBankForm.bankAccount='';adminBankForm.transferNote=''
+    await loadAdminBanks(); showToast('Đã lưu tài khoản ngân hàng')}catch(e){loadError.value=e.message||'Error'}finally{savingAdminBank.value=false}
+}
+async function deleteAdminBank(id) {
+  try{await apiFetch(`/api/admin/bank-accounts/${id}`,{method:'DELETE',headers:authJsonHeaders.value});await loadAdminBanks(); showToast('Đã xóa tài khoản ngân hàng')}catch(e){loadError.value=e.message||'Error'}
+}
+
+async function loadSicbo5pControl() {
+  try {
+    const d=await apiFetch('/api/admin/sicbo-control?roomId=sicbo-5p',{headers:userStore.authHeaders})
+    const s=d.state||{}; sicbo5pControl.roomId='sicbo-5p'; sicbo5pControl.roundId=s.roundId||'--'
+    sicbo5pControl.timeLeft=Number(s.timeLeft||0); sicbo5pControl.bettingOpen=Boolean(s.bettingOpen)
+    sicbo5pControl.forcedResult=Array.isArray(s.forcedResult)?[...s.forcedResult]:null
+  } catch { /* ignore */ }
+}
+
+async function saveSicbo5pControl() {
+  const raw=[forced5p.d1,forced5p.d2,forced5p.d3]
+  let forcedResult=null
+  if(!raw.every(v=>String(v||'').trim()==='')) {
+    forcedResult=raw.map(v=>Number(v))
+    if(!forcedResult.every(v=>Number.isInteger(v)&&v>=1&&v<=6)){alert('Kết quả phải là 3 số 1-6');return}
+  }
+  try{
+    const d=await apiFetch('/api/admin/sicbo-control?roomId=sicbo-5p',{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({forcedResult,forcedNote:''})})
+    const s=d.state||{}; sicbo5pControl.forcedResult=Array.isArray(s.forcedResult)?[...s.forcedResult]:null
+    showToast('Đã lưu kèo Xúc sắc 5P')
+  }catch(e){loadError.value=e.message||'Error'}
+}
+
+function sendAdminChat() {
+  const text=adminChatInput.value.trim(); if(!text||sendingAdminChat.value)return
+  sendingAdminChat.value=true
+  const socket=socketStore.connect()
+  socket.emit('send_chat_message',{roomId:selectedRoomId.value,content:text,token:userStore.token},()=>{sendingAdminChat.value=false})
+  adminChatInput.value=''
+}
+
+function onAdminChatMessage(msg) {
+  if(msg.roomId!==selectedRoomId.value)return
+  if(chatMessages.value.some(m=>m._id===msg._id))return
+  chatMessages.value.push(msg)
+  nextTick(()=>{if(adminChatRef.value)adminChatRef.value.scrollTop=adminChatRef.value.scrollHeight})
+}
+
+let chatSocketCleanup=null
+function setupChatSocket() {
+  const socket=socketStore.connect()
+  if(chatSocketCleanup)chatSocketCleanup()
+  if(selectedRoomId.value)socket.emit('join_chat',{roomId:selectedRoomId.value})
+  socket.on('chat_message',onAdminChatMessage)
+  chatSocketCleanup=()=>{socket.off('chat_message',onAdminChatMessage);if(selectedRoomId.value)socket.emit('leave_chat',{roomId:selectedRoomId.value})}
+}
 async function loadChatMessages(roomId) { if(!roomId){chatMessages.value=[];return}; const d=await apiFetch(`/api/admin/chat/messages/${roomId}`,{headers:userStore.authHeaders}); chatMessages.value=d.items||[] }
 async function loadMobileChatRooms() { const d=await apiFetch('/api/admin/chat-mobile/rooms',{headers:userStore.authHeaders}); mobileChatRooms.value=d.items||[]; if(!selectedMobileRoomId.value&&mobileChatRooms.value.length)selectedMobileRoomId.value=mobileChatRooms.value[0].roomId }
 async function loadMobileChatMessages(roomId) { if(!roomId){mobileChatMessages.value=[];return}; const d=await apiFetch(`/api/admin/chat-mobile/messages/${roomId}`,{headers:userStore.authHeaders}); mobileChatMessages.value=d.items||[] }
@@ -724,7 +1159,7 @@ async function loadUserDetail(userId) { const d=await apiFetch(`/api/admin/users
 
 async function loadAllData() {
   loadingAll.value=true; loadError.value=''
-  try { await Promise.all([loadOverview(),loadUsers(),loadTransactions(),loadGameHistory(),loadRoundHistory(),loadGameSummary(),loadRevenue(),loadInviteCodes(),loadOddsSettings(selectedOddsRoomId.value),loadSicboControl(selectedOddsRoomId.value),loadPayoutSettings(),loadAdmins(),loadChatRooms(),loadMobileChatRooms()]) }
+  try { await Promise.all([loadOverview(),loadUsers(),loadTransactions(),loadGameHistory(),loadRoundHistory(),loadGameSummary(),loadRevenue(),loadInviteCodes(),loadOddsSettings(selectedOddsRoomId.value),loadSicboControl(selectedOddsRoomId.value),loadSicbo5pControl(),loadPayoutSettings(),loadAdmins(),loadChatRooms(),loadMobileChatRooms(),loadSiteConfig(),loadAdminBanks()]) }
   catch(e){loadError.value=e.message||'Không thể tải dữ liệu'} finally{loadingAll.value=false}
 }
 
@@ -733,18 +1168,115 @@ async function refreshAdminData() { await Promise.all([loadOverview(),loadUsers(
 async function reviewTransaction(txId,action) {
   await apiFetch(`/api/admin/transactions/${txId}/${action}`,{method:'POST',headers:authJsonHeaders.value,body:JSON.stringify({})})
   await Promise.all([refreshAdminData(),userStore.fetchMe()])
+  showToast(action === 'approve' ? 'Đã duyệt giao dịch' : 'Đã từ chối giao dịch')
 }
 
 async function toggleUserStatus(userId,status) {
   await apiFetch(`/api/admin/users/${userId}/status`,{method:'PATCH',headers:authJsonHeaders.value,body:JSON.stringify({status})})
   await refreshAdminData(); if(selectedUser.value?._id===userId)await loadUserDetail(userId)
+  showToast('Đã cập nhật trạng thái người chơi')
 }
 
-watch(selectedRoomId,async r=>{ await loadChatMessages(r) })
+async function adminAdjustBalance(userId, kind) {
+  const key = String(userId || '')
+  if (!key) return
+  if (isUserRowSaving(key)) return
+
+  const draft = getUserDraft(key)
+  const rawAmount = kind === 'bonus' ? draft.bonusAmount : draft.adjustAmount
+  const numericAmount = Number(rawAmount || 0)
+  if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+    showToast('Vui lòng nhập số tiền hợp lệ', 'error')
+    return
+  }
+
+  userRowSavingState[key] = true
+  try {
+    await apiFetch(`/api/admin/users/${encodeURIComponent(key)}/adjust-balance`, {
+      method: 'POST',
+      headers: authJsonHeaders.value,
+      body: JSON.stringify({ kind, amount: numericAmount })
+    })
+    if (kind === 'bonus') draft.bonusAmount = ''
+    else draft.adjustAmount = ''
+    await loadUsers()
+    showToast('Đã cập nhật số dư')
+  } catch (e) {
+    showToast(e.message || 'Không thể cập nhật số dư', 'error')
+  } finally {
+    userRowSavingState[key] = false
+  }
+}
+
+async function adminSetVip(userId) {
+  const key = String(userId || '')
+  if (!key) return
+  if (isUserRowSaving(key)) return
+
+  const draft = getUserDraft(key)
+  const vipLevel = Number(draft.vipLevel || 0)
+  if (!Number.isFinite(vipLevel) || vipLevel < 0 || !Number.isInteger(vipLevel)) {
+    showToast('VIP không hợp lệ', 'error')
+    return
+  }
+
+  userRowSavingState[key] = true
+  try {
+    await apiFetch(`/api/admin/users/${encodeURIComponent(key)}/vip`, {
+      method: 'PATCH',
+      headers: authJsonHeaders.value,
+      body: JSON.stringify({ vipLevel })
+    })
+    draft.vipLevel = ''
+    await loadUsers()
+    showToast('Đã cập nhật VIP')
+  } catch (e) {
+    showToast(e.message || 'Không thể cập nhật VIP', 'error')
+  } finally {
+    userRowSavingState[key] = false
+  }
+}
+
+watch(selectedRoomId,async r=>{
+  await loadChatMessages(r)
+  // Rejoin chat socket for new room
+  const socket=socketStore.socket
+  if(socket){
+    socket.emit('leave_chat',{roomId:selectedRoomId.value})
+    if(r){socket.emit('join_chat',{roomId:r})}
+  }
+})
 watch(selectedMobileRoomId,async r=>{ await loadMobileChatMessages(r) })
 watch(selectedOddsRoomId,async r=>{ await Promise.all([loadOddsSettings(r),loadSicboControl(r)]) })
+watch(activeTab,(tab)=>{ ensureSicboRealtimeForTab(tab) },{ immediate:true })
+watch(
+  () => [
+    socketStore.roundState.roomId,
+    socketStore.roundState.roundId,
+    socketStore.roundState.timeLeft,
+    socketStore.roundState.bettingOpen,
+    socketStore.roundState.betTotalAmount,
+    socketStore.roundState.betCount,
+    socketStore.roundState.summary
+  ],
+  () => {
+    applySicboRealtimeState(socketStore.roundState)
+    void maybeRefreshGameHistoryFromRealtime(socketStore.roundState)
+  },
+  { immediate: true }
+)
 
-onMounted(loadAllData)
+onMounted(async ()=>{
+  await loadAllData()
+  // Ensure socket is connected so the realtime sicbo state can stream in.
+  socketStore.connect()
+  setupChatSocket()
+})
+
+onBeforeUnmount(()=>{
+  if(chatSocketCleanup)chatSocketCleanup()
+  if (toastTimer) clearTimeout(toastTimer)
+})
 </script>
 
 <style scoped>
@@ -778,10 +1310,22 @@ onMounted(loadAllData)
   border-bottom: 1px solid rgba(255,255,255,0.06);
 }
 
+.sidebar__brand-info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
 .sidebar__logo {
   width: 130px;
   height: auto;
   filter: brightness(1.2);
+}
+
+.sidebar__domain {
+  font-size: 10px;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.02em;
 }
 
 .sidebar__close {
@@ -1137,6 +1681,47 @@ onMounted(loadAllData)
   min-width: 120px;
 }
 
+.inline-input--sm {
+  height: 30px;
+  min-width: 90px;
+  width: 140px;
+}
+
+.panel-card__header--with-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.panel-card__header--with-tools .inline-input {
+  margin-left: auto;
+}
+
+.table-scroll {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.data-table--dense th,
+.data-table--dense td {
+  padding: 8px 10px;
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+.cell-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.action-btns--tight {
+  justify-content: flex-start;
+  flex-wrap: nowrap;
+}
+
 .select-input {
   height: 36px;
   padding: 0 10px;
@@ -1332,9 +1917,34 @@ onMounted(loadAllData)
   background: #fff;
 }
 
+.admin-chat-msg--admin {
+  background: #f0f4ff !important;
+  border-left: 3px solid #6378ff;
+}
+
 .admin-chat-msg strong {
   font-size: 13px;
   color: #1a1a2e;
+}
+
+.admin-chat-input {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.admin-chat-input input {
+  flex: 1;
+  height: 40px;
+  padding: 0 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.admin-chat-input input:focus {
+  border-color: #6378ff;
 }
 
 .admin-chat-msg p {
@@ -1346,6 +1956,147 @@ onMounted(loadAllData)
 .admin-chat-msg small {
   font-size: 11px;
   color: #999;
+}
+
+/* Footer */
+.admin-footer {
+  padding: 24px;
+  text-align: center;
+  font-size: 12px;
+  color: #aaa;
+  letter-spacing: 0.02em;
+}
+
+.admin-footer strong {
+  color: #6378ff;
+  font-weight: 700;
+}
+
+.admin-toast {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: rgba(18, 18, 18, 0.92);
+  color: #fff;
+  box-shadow: 0 12px 30px rgba(0,0,0,0.25);
+  z-index: 9999;
+  max-width: min(360px, calc(100vw - 32px));
+}
+
+.admin-toast--success {
+  border-left: 4px solid #4caf50;
+}
+
+.admin-toast--error {
+  border-left: 4px solid #e53935;
+}
+
+.admin-toast__close {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  border: none;
+  background: rgba(255,255,255,0.12);
+  color: #fff;
+  cursor: pointer;
+}
+
+/* ===== Set Kèo Hero ===== */
+.keo-hero {
+  padding: 24px;
+  border-radius: 16px;
+  background: linear-gradient(135deg, #1a237e, #283593);
+  color: #fff;
+  text-align: center;
+}
+
+.keo-hero--5p {
+  background: linear-gradient(135deg, #4a148c, #6a1b9a);
+}
+
+.keo-hero h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 800;
+}
+
+.keo-hero__meta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin-top: 12px;
+  font-size: 14px;
+}
+
+.keo-hero__timer {
+  font-size: 28px;
+  font-weight: 800;
+  color: #ffd740;
+  font-variant-numeric: tabular-nums;
+}
+
+.keo-status--open {
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: #43a047;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.keo-status--closed {
+  padding: 3px 12px;
+  border-radius: 20px;
+  background: #e53935;
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* Keo Control */
+.keo-control {
+  padding: 20px;
+  border-radius: 14px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  text-align: center;
+}
+
+.keo-control__label {
+  margin: 0 0 12px;
+  font-size: 15px;
+  color: #555;
+}
+
+.keo-control__row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.keo-select {
+  width: 56px;
+  height: 44px;
+  border: 2px solid #ddd;
+  border-radius: 10px;
+  text-align: center;
+  font-size: 18px;
+  font-weight: 700;
+  color: #1a1a2e;
+  outline: none;
+  background: #fafafa;
+}
+
+.keo-select:focus {
+  border-color: #6378ff;
 }
 
 /* Error */

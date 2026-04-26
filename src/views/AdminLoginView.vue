@@ -2,28 +2,42 @@
   <section class="admin-login">
     <div class="admin-login__backdrop"></div>
 
-    <form class="admin-login__card" @submit.prevent="submit">
-      <div class="admin-login__field">
-        <input v-model.trim="form.username" type="text" placeholder="admin1" />
+    <div class="admin-login__wrapper">
+      <div class="admin-login__brand">
+        <img src="/img/the-venetian-wordmark.svg" alt="The Venetian® Macau" class="admin-login__logo" />
+        <p class="admin-login__tagline">Hệ thống quản trị</p>
+        <span class="admin-login__domain">admin.casinovenetianmacau.com</span>
       </div>
 
-      <div class="admin-login__field admin-login__field--password">
-        <input
-          v-model="form.password"
-          :type="showPassword ? 'text' : 'password'"
-          placeholder="Abc1799"
-        />
-        <button type="button" @click="showPassword = !showPassword">
-          {{ showPassword ? 'Ẩn' : 'Hiện' }}
+      <form class="admin-login__card" @submit.prevent="submit">
+        <h2 class="admin-login__title">Đăng nhập Admin</h2>
+
+        <div class="admin-login__field">
+          <label>Tài khoản</label>
+          <input v-model.trim="form.username" type="text" placeholder="Nhập username" />
+        </div>
+
+        <div class="admin-login__field">
+          <label>Mật khẩu</label>
+          <div class="admin-login__pw-wrap">
+            <input
+              v-model="form.password"
+              :type="showPassword ? 'text' : 'password'"
+              placeholder="Nhập mật khẩu"
+            />
+            <button type="button" class="admin-login__pw-toggle" @click="showPassword = !showPassword">
+              {{ showPassword ? 'Ẩn' : 'Hiện' }}
+            </button>
+          </div>
+        </div>
+
+        <button :disabled="submitting" class="admin-login__submit" type="submit">
+          {{ submitting ? 'Đang đăng nhập...' : 'Đăng nhập' }}
         </button>
-      </div>
 
-      <button :disabled="submitting" class="admin-login__submit" type="submit">
-        {{ submitting ? 'Đang đăng nhập' : 'Đăng nhập' }}
-      </button>
-
-      <p v-if="message" class="admin-login__message">{{ message }}</p>
-    </form>
+        <p v-if="message" class="admin-login__message">{{ message }}</p>
+      </form>
+    </div>
   </section>
 </template>
 
@@ -36,10 +50,7 @@ const route = useRoute()
 const router = useRouter()
 const userStore = useUserStore()
 
-const form = reactive({
-  username: '',
-  password: ''
-})
+const form = reactive({ username: '', password: '' })
 const submitting = ref(false)
 const showPassword = ref(false)
 const message = ref('')
@@ -58,7 +69,7 @@ async function submit() {
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : '/admin'
     await router.push(redirect)
   } catch (error) {
-    message.value = error.message || 'Không thể đăng nhập admin'
+    message.value = error.message || 'Không thể đăng nhập'
   } finally {
     submitting.value = false
   }
@@ -72,7 +83,7 @@ async function submit() {
   display: grid;
   place-items: center;
   overflow: hidden;
-  font-family: Roboto, Arial, sans-serif;
+  font-family: 'Lexend Deca', Roboto, Arial, sans-serif;
   background:
     linear-gradient(180deg, rgba(35, 26, 56, 0.18), rgba(25, 20, 46, 0.38)),
     radial-gradient(circle at 70% 18%, rgba(255, 94, 142, 0.75), transparent 12%),
@@ -83,86 +94,141 @@ async function submit() {
 .admin-login__backdrop {
   position: absolute;
   inset: 0;
-  background:
-    linear-gradient(180deg, rgba(163, 185, 255, 0.18), rgba(23, 29, 58, 0.38) 30%, rgba(13, 18, 33, 0.78) 100%);
+  background: linear-gradient(180deg, rgba(10, 15, 35, 0.5), rgba(8, 12, 30, 0.85) 100%);
 }
 
-.admin-login__backdrop::before,
-.admin-login__backdrop::after {
-  content: '';
-  position: absolute;
-  inset: auto 0 0;
-  height: 44%;
-  background:
-    linear-gradient(90deg, rgba(0, 0, 0, 0.18) 0 10%, transparent 10% 12%, rgba(0, 0, 0, 0.25) 12% 18%, transparent 18% 20%, rgba(0, 0, 0, 0.14) 20% 28%, transparent 28% 30%, rgba(0, 0, 0, 0.28) 30% 40%, transparent 40% 42%, rgba(0, 0, 0, 0.16) 42% 48%, transparent 48% 54%, rgba(0, 0, 0, 0.25) 54% 60%, transparent 60% 66%, rgba(0, 0, 0, 0.18) 66% 72%, transparent 72% 78%, rgba(0, 0, 0, 0.3) 78% 86%, transparent 86% 100%);
-  opacity: 0.72;
-}
-
-.admin-login__backdrop::after {
-  inset: auto 0 44%;
-  height: 18%;
-  background:
-    linear-gradient(90deg, rgba(255, 181, 74, 0.75) 0 4px, transparent 4px 100%),
-    linear-gradient(180deg, rgba(255, 205, 129, 0.35), transparent);
-  background-size: 160px 100%;
-  opacity: 0.5;
-}
-
-.admin-login__card {
+.admin-login__wrapper {
   position: relative;
   z-index: 1;
   width: 100%;
-  max-width: 230px;
-  padding: 16px 14px;
-  border-radius: 10px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
+  max-width: 380px;
+  padding: 0 20px;
 }
 
-.admin-login__field + .admin-login__field {
-  margin-top: 10px;
+.admin-login__brand {
+  text-align: center;
+  margin-bottom: 28px;
+}
+
+.admin-login__logo {
+  width: 180px;
+  margin: 0 auto 12px;
+  filter: brightness(1.15);
+}
+
+.admin-login__tagline {
+  margin: 0;
+  font-size: 14px;
+  color: rgba(255,255,255,0.6);
+  font-weight: 500;
+}
+
+.admin-login__domain {
+  display: inline-block;
+  margin-top: 8px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  background: rgba(255,255,255,0.08);
+  font-size: 12px;
+  color: rgba(255,255,255,0.5);
+  letter-spacing: 0.02em;
+}
+
+.admin-login__card {
+  padding: 28px 24px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.97);
+  box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+}
+
+.admin-login__title {
+  margin: 0 0 20px;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1a1a2e;
+  text-align: center;
+}
+
+.admin-login__field {
+  margin-bottom: 16px;
+}
+
+.admin-login__field label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #555;
 }
 
 .admin-login__field input {
   width: 100%;
-  height: 32px;
-  padding: 0 10px;
-  border: 1px solid #d9dee8;
-  border-radius: 4px;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  font-size: 14px;
   outline: none;
+  color: #1a1a2e;
 }
 
-.admin-login__field--password {
+.admin-login__field input:focus {
+  border-color: #6378ff;
+}
+
+.admin-login__pw-wrap {
   position: relative;
 }
 
-.admin-login__field--password button {
+.admin-login__pw-toggle {
   position: absolute;
   top: 50%;
-  right: 8px;
+  right: 12px;
   transform: translateY(-50%);
   border: none;
   background: transparent;
-  color: #7f8590;
-  font-size: 11px;
+  color: #888;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .admin-login__submit {
   width: 100%;
-  height: 34px;
-  margin-top: 14px;
+  height: 46px;
+  margin-top: 8px;
   border: none;
-  border-radius: 5px;
-  background: #2f80ed;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #6378ff, #5266e0);
   color: #fff;
-  font-size: 12px;
-  font-weight: 600;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s;
+}
+
+.admin-login__submit:hover {
+  opacity: 0.92;
+}
+
+.admin-login__submit:disabled {
+  opacity: 0.6;
 }
 
 .admin-login__message {
-  margin: 10px 0 0;
+  margin: 14px 0 0;
+  text-align: center;
   color: #df3a3a;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 13px;
+}
+
+@media (max-width: 420px) {
+  .admin-login__wrapper {
+    padding: 0 16px;
+  }
+
+  .admin-login__card {
+    padding: 24px 18px;
+  }
 }
 </style>

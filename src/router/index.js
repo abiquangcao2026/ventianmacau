@@ -16,7 +16,7 @@ const router = createRouter({
       path: '/sicbo',
       name: 'sicbo',
       component: SicboGame,
-      meta: { layout: 'member' }
+      meta: { requiresAuth: true, layout: 'member' }
     },
     {
       path: '/account',
@@ -34,6 +34,12 @@ const router = createRouter({
       path: '/withdraw',
       name: 'withdraw',
       component: () => import('@/views/WithdrawView.vue'),
+      meta: { requiresAuth: true, layout: 'member' }
+    },
+    {
+      path: '/addbank',
+      name: 'addbank',
+      component: () => import('@/views/AddBankView.vue'),
       meta: { requiresAuth: true, layout: 'member' }
     },
     {

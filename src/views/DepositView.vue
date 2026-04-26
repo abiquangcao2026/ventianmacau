@@ -36,6 +36,27 @@
     </div>
 
     <p v-if="message" class="deposit-message">{{ message }}</p>
+
+    <!-- VIP Table -->
+    <div class="vip-section">
+      <h2 class="vip-section__title">Nâng cấp đặc quyền VIP</h2>
+      <p class="vip-section__subtitle">Bảng tích lũy thưởng nạp khi nâng cấp VIP:</p>
+
+      <div class="vip-table">
+        <div class="vip-row vip-row--header">
+          <span>Tích lũy</span>
+          <span>Cấp</span>
+          <span>Thưởng</span>
+          <span>Hạn mức</span>
+        </div>
+        <div v-for="tier in vipTiers" :key="tier.level" class="vip-row">
+          <span>{{ tier.required }}</span>
+          <span class="vip-row__level">{{ tier.level }}</span>
+          <span>{{ tier.bonus }}</span>
+          <span>{{ tier.limit }}</span>
+        </div>
+      </div>
+    </div>
   </section>
 </template>
 
@@ -48,6 +69,16 @@ const userStore = useUserStore()
 const amount = ref(null)
 const submitting = ref(false)
 const message = ref('')
+
+const vipTiers = [
+  { required: '4.000$', level: 'VIP 1', bonus: '100$', limit: '10.000$' },
+  { required: '8.000$', level: 'VIP 2', bonus: '200$', limit: '20.000$' },
+  { required: '12.000$', level: 'VIP 3', bonus: '500$', limit: '50.000$' },
+  { required: '20.000$', level: 'VIP 4', bonus: '1.000$', limit: '80.000$' },
+  { required: '50.000$', level: 'VIP 5', bonus: '3.000$', limit: '200.000$' },
+  { required: '100.000$', level: 'VIP 6', bonus: '5.000$', limit: '400.000$' },
+  { required: '200.000$', level: 'VIP 7', bonus: '10.000$', limit: '1.000.000$' }
+]
 
 async function submitDeposit() {
   if (!userStore.user?._id) {
@@ -208,5 +239,64 @@ async function submitDeposit() {
   text-align: center;
   font-size: 14px;
   color: #43e97b;
+}
+
+/* VIP Section */
+.vip-section {
+  margin-top: 28px;
+}
+
+.vip-section__title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 800;
+  color: #fff;
+}
+
+.vip-section__subtitle {
+  margin: 6px 0 14px;
+  font-size: 13px;
+  color: rgba(255,255,255,0.6);
+}
+
+.vip-table {
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(255,255,255,0.95);
+}
+
+.vip-row {
+  display: grid;
+  grid-template-columns: 1.3fr 0.8fr 0.9fr 1.1fr;
+}
+
+.vip-row span {
+  padding: 11px 8px;
+  font-size: 13px;
+  color: #3a3a3a;
+  text-align: center;
+  border-bottom: 1px solid #eee;
+}
+
+.vip-row:last-child span {
+  border-bottom: none;
+}
+
+.vip-row--header {
+  background: #f8f0dd;
+}
+
+.vip-row--header span {
+  font-weight: 700;
+  font-size: 11px;
+  color: #8b6914;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  border-bottom-color: #e8dcc0;
+}
+
+.vip-row__level {
+  font-weight: 700;
+  color: #c49520 !important;
 }
 </style>

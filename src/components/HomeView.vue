@@ -35,7 +35,13 @@
     </section>
 
     <div class="marquee-box">
-      <span class="marquee-box__icon">🔔</span>
+      <span class="marquee-box__icon" aria-hidden="true">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+          <path d="M12 22a2 2 0 002-2H10a2 2 0 002 2z" fill="rgba(255,255,255,0.9)"/>
+          <path d="M18 16H6l1.3-2.1c.5-.8.7-1.7.7-2.6V9a4 4 0 018 0v2.3c0 .9.2 1.8.7 2.6L18 16z" fill="rgba(255,255,255,0.32)"/>
+          <path d="M18 16H6" stroke="rgba(255,255,255,0.65)" stroke-width="1.6" stroke-linecap="round"/>
+        </svg>
+      </span>
       <div class="marquee-box__track">
         <p>Chào mừng bạn đến với Coronacasino macau. Chúc bạn thắng lớn và giao dịch an toàn.</p>
       </div>
@@ -59,7 +65,31 @@
       <div class="game-section__head">
         <div class="game-section__heading">
           <span class="game-section__kicker">{{ section.kicker }}</span>
-          <h2 class="game-section__title">{{ section.title }}</h2>
+          <h2 class="game-section__title">
+            <span class="game-section__title-icon" aria-hidden="true">
+              <svg v-if="section.title === 'Hot Nhất'" width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M13 3s-1 2-1 4 2 3 2 6-2 5-5 5-5-2-5-6c0-5 6-9 9-9z" fill="url(#hotGrad)"/>
+                <path d="M14 10c2 2 3 4 3 6 0 3-2 5-5 5 2-2 2-4 1-6s-2-3 1-5z" fill="url(#hotGlow)" opacity="0.9"/>
+                <defs>
+                  <linearGradient id="hotGrad" x1="4" y1="3" x2="18" y2="21" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#FFD58B"/>
+                    <stop offset="0.5" stop-color="#FF965F"/>
+                    <stop offset="1" stop-color="#E87040"/>
+                  </linearGradient>
+                  <linearGradient id="hotGlow" x1="10" y1="10" x2="20" y2="22" gradientUnits="userSpaceOnUse">
+                    <stop stop-color="#FFF1C7"/>
+                    <stop offset="1" stop-color="#FF6A3D"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+              <svg v-else width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M7 7h10l-1 12H8L7 7z" stroke="rgba(255,255,255,0.9)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M9 7V5a3 3 0 016 0v2" stroke="rgba(255,255,255,0.9)" stroke-width="1.8" stroke-linecap="round"/>
+                <path d="M10 11h4M10 15h4" stroke="rgba(255,255,255,0.65)" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+            </span>
+            {{ section.title }}
+          </h2>
         </div>
 
         <button class="game-section__more ui-reset-button" type="button" @click="alertBaoTri">
@@ -313,7 +343,7 @@ onBeforeUnmount(() => {
 .hero-slide {
   position: relative;
   flex: 0 0 100%;
-  min-height: 232px;
+  min-height: 168px;
   border-radius: 18px;
   overflow: hidden;
   scroll-snap-align: start;
@@ -330,7 +360,7 @@ onBeforeUnmount(() => {
 .hero-slide__overlay {
   position: absolute;
   inset: auto 0 0 0;
-  padding: 60px 16px 16px;
+  padding: 44px 14px 14px;
   background: linear-gradient(180deg, transparent, rgba(6, 12, 24, 0.88) 42%, rgba(6, 12, 24, 0.96));
 }
 
@@ -346,7 +376,7 @@ onBeforeUnmount(() => {
 .hero-slide__title {
   display: block;
   margin: 6px 0 0;
-  font-size: 24px;
+  font-size: 18px;
   line-height: 1.05;
 }
 
@@ -467,9 +497,23 @@ onBeforeUnmount(() => {
 }
 
 .game-section__title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
   margin: 5px 0 0;
   font-size: 20px;
   line-height: 1;
+}
+
+.game-section__title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.06);
 }
 
 .game-section__more {
