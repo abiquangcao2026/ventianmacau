@@ -1,0 +1,19 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="d4Body" x1="22" y1="10" x2="102" y2="112" gradientUnits="userSpaceOnUse"><stop stop-color="#FF6B61"/><stop offset="0.22" stop-color="#FF1717"/><stop offset="0.62" stop-color="#D90000"/><stop offset="1" stop-color="#7D0000"/></linearGradient>
+    <radialGradient id="d4Shine" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(34 24) rotate(52) scale(78 54)"><stop stop-color="#FFFFFF" stop-opacity="0.62"/><stop offset="0.28" stop-color="#FFFFFF" stop-opacity="0.2"/><stop offset="1" stop-color="#FFFFFF" stop-opacity="0"/></radialGradient>
+    <radialGradient id="d4Pip" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(35 34) scale(17)"><stop stop-color="#FFFFFF"/><stop offset="0.6" stop-color="#F8F8F8"/><stop offset="1" stop-color="#C8C8C8"/></radialGradient>
+    <filter id="d4Shadow" x="0" y="0" width="120" height="120" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="8" stdDeviation="7" flood-color="#260000" flood-opacity="0.42"/></filter>
+    <filter id="d4PipShadow" x="18" y="18" width="84" height="84" color-interpolation-filters="sRGB"><feDropShadow dx="0" dy="3" stdDeviation="2" flood-color="#3D0000" flood-opacity="0.55"/></filter>
+  </defs>
+  <g filter="url(#d4Shadow)">
+    <rect x="10" y="8" width="100" height="100" rx="24" fill="url(#d4Body)"/>
+    <rect x="10" y="8" width="100" height="100" rx="24" fill="url(#d4Shine)"/>
+    <rect x="15" y="13" width="90" height="90" rx="21" stroke="#FF9B90" stroke-opacity="0.42" stroke-width="2"/>
+    <rect x="11.5" y="9.5" width="97" height="97" rx="23" stroke="#5B0000" stroke-opacity="0.5" stroke-width="3"/>
+    <g filter="url(#d4PipShadow)">
+      <circle cx="39" cy="37" r="11.3" fill="url(#d4Pip)"/><circle cx="81" cy="37" r="11.3" fill="url(#d4Pip)"/><circle cx="39" cy="79" r="11.3" fill="url(#d4Pip)"/><circle cx="81" cy="79" r="11.3" fill="url(#d4Pip)"/>
+      <circle cx="35" cy="33" r="3" fill="#FFFFFF" fill-opacity="0.72"/><circle cx="77" cy="33" r="3" fill="#FFFFFF" fill-opacity="0.72"/><circle cx="35" cy="75" r="3" fill="#FFFFFF" fill-opacity="0.72"/><circle cx="77" cy="75" r="3" fill="#FFFFFF" fill-opacity="0.72"/>
+    </g>
+  </g>
+</svg>

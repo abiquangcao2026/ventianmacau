@@ -1,0 +1,32 @@
+name: Build full stack
+
+on:
+  push:
+    branches:
+      - main
+      - full-stack-deploy
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build backend and frontend
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout source
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Build project
+        run: npm run build
+
+      - name: Check backend entry
+        run: |
+          node --check index.js
+          node --check backend/server.js
+          node --check backend/server/index.js

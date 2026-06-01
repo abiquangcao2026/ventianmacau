@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="vi">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>The Venetian | Đang bảo trì</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --bg-1: #081123;
+        --bg-2: #132a57;
+        --card: rgba(7, 18, 40, 0.88);
+        --line: rgba(255, 255, 255, 0.12);
+        --gold: #f0c75e;
+        --gold-2: #ffdf8c;
+        --text: #f7f8fc;
+        --muted: rgba(247, 248, 252, 0.72);
+        --accent: #4fd1ff;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top, rgba(79, 209, 255, 0.18), transparent 28%),
+          linear-gradient(160deg, var(--bg-1) 0%, var(--bg-2) 100%);
+        display: grid;
+        place-items: center;
+        overflow: hidden;
+      }
+
+      .shell {
+        width: min(92vw, 760px);
+        padding: 24px;
+      }
+
+      .card {
+        position: relative;
+        padding: 40px 28px;
+        border: 1px solid var(--line);
+        border-radius: 28px;
+        background: var(--card);
+        box-shadow: 0 32px 80px rgba(0, 0, 0, 0.32);
+        backdrop-filter: blur(12px);
+      }
+
+      .brand {
+        display: inline-flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 20px;
+        padding: 10px 16px;
+        border-radius: 999px;
+        border: 1px solid rgba(240, 199, 94, 0.28);
+        background: rgba(240, 199, 94, 0.08);
+        color: var(--gold-2);
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+      }
+
+      .status {
+        margin: 0 0 10px;
+        font-size: clamp(30px, 5vw, 48px);
+        line-height: 1.05;
+        font-weight: 800;
+      }
+
+      .desc {
+        margin: 0;
+        max-width: 620px;
+        color: var(--muted);
+        font-size: 16px;
+        line-height: 1.7;
+      }
+
+      .meta {
+        margin-top: 28px;
+        display: grid;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      .meta-item {
+        padding: 16px;
+        border-radius: 18px;
+        border: 1px solid var(--line);
+        background: rgba(255, 255, 255, 0.04);
+      }
+
+      .meta-label {
+        display: block;
+        margin-bottom: 8px;
+        color: var(--muted);
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .meta-value {
+        font-size: 16px;
+        font-weight: 700;
+      }
+
+      .dot {
+        display: inline-block;
+        width: 10px;
+        height: 10px;
+        margin-right: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        box-shadow: 0 0 0 6px rgba(79, 209, 255, 0.16);
+        animation: pulse 1.8s infinite ease-in-out;
+      }
+
+      .footer {
+        margin-top: 24px;
+        color: rgba(247, 248, 252, 0.56);
+        font-size: 13px;
+      }
+
+      @keyframes pulse {
+        0%, 100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.2);
+          opacity: 0.72;
+        }
+      }
+
+      @media (max-width: 640px) {
+        .card {
+          padding: 28px 18px;
+          border-radius: 22px;
+        }
+
+        .meta {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main class="shell">
+      <section class="card">
+        <div class="brand">The Venetian</div>
+        <h1 class="status">Hệ thống đang bảo trì và cập nhật toàn bộ server</h1>
+        <p class="desc">
+          Nền tảng đang được nâng cấp để tối ưu tốc độ, bảo mật và đồng bộ giao dịch realtime.
+          Vui lòng quay lại sau ít phút. Nếu cần hỗ trợ gấp, hãy liên hệ CSKH sau khi hệ thống mở lại.
+        </p>
+
+        <div class="meta">
+          <div class="meta-item">
+            <span class="meta-label">Trạng thái</span>
+            <div class="meta-value"><span class="dot"></span>Đang bảo trì</div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Hạng mục</span>
+            <div class="meta-value">Cập nhật toàn bộ server</div>
+          </div>
+          <div class="meta-item">
+            <span class="meta-label">Thông báo</span>
+            <div class="meta-value">Tạm khóa truy cập game</div>
+          </div>
+        </div>
+
+        <div class="footer">The Venetian Macau System Notice</div>
+      </section>
+    </main>
+  </body>
+</html>
